@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; media-src 'self' file: blob:">
+  <title>SRT-to-Speech Studio</title>
+  <script src="theme-init.js"></script>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <main class="app-container">
+    <header class="app-header">
+      <svg class="brand-mark" aria-hidden="true" viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round">
+        <path d="M4 10v4M8 7v10M12 4v16M16 7v10M20 10v4"/>
+      </svg>
+      <h1>SRT-to-Speech Studio</h1>
+      <button class="theme-toggle" id="theme-toggle" type="button" aria-label="Switch to dark mode"></button>
+    </header>
+
+    <section class="controls-region" aria-label="Input setup">
+      <div class="control-group">
+        <label for="subtitle-input">Subtitle Input</label>
+        <button class="input-box" id="subtitle-input" type="button">
+          <svg aria-hidden="true" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M7 3h7l4 4v14H7z"/>
+            <path d="M14 3v4h4"/>
+            <path d="M10 12h4M10 16h4"/>
+          </svg>
+          <span class="path-label" id="subtitle-path">Choose a .srt file</span>
+        </button>
+      </div>
+
+      <div class="control-group">
+        <label id="voice-label" for="voice-input">Voice Profile</label>
+        <button class="input-box" id="voice-input" type="button">
+          <svg aria-hidden="true" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="9" y="3" width="6" height="11" rx="3"/>
+            <path d="M5 11a7 7 0 0 0 14 0"/>
+            <path d="M12 18v3"/>
+          </svg>
+          <span class="path-label" id="voice-path">Choose a voice sample</span>
+        </button>
+      </div>
+
+      <div class="control-group">
+        <label for="output-input">Export Audio</label>
+        <button class="input-box" id="output-input" type="button">
+          <svg aria-hidden="true" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
+          </svg>
+          <span class="path-label" id="output-path">Choose an output folder</span>
+        </button>
+      </div>
+
+      <div class="control-group">
+        <label for="threads-select">Processing Threads</label>
+        <div class="select-box">
+          <select id="threads-select">
+            <option value="2">2</option>
+            <option value="3">3</option>
+            <option value="4" selected>4</option>
+            <option value="5">5</option>
+            <option value="6">6</option>
+          </select>
+          <svg aria-hidden="true" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M6 9l6 6 6-6"/>
+          </svg>
+        </div>
+      </div>
+
+      <div class="control-group control-group--checkbox">
+        <label class="checkbox-label" for="validate-checkbox">
+          <input type="checkbox" id="validate-checkbox">
+          <span>Validate (ASR)</span>
+        </label>
+      </div>
+
+      <div class="action-buttons">
+        <button class="btn-secondary btn-secondary--lg" id="validate-button" type="button" disabled>
+          <span>Validate Now</span>
+        </button>
+        <button class="btn-create" id="create-button" type="button">
+          <svg aria-hidden="true" viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
+            <path d="M8 5.5v13l11-6.5z"/>
+          </svg>
+          <span>Create Audio</span>
+        </button>
+      </div>
+    </section>
+
+    <section class="model-settings" aria-label="TTS model settings">
+      <div class="control-group">
+        <label for="tts-model-select">TTS Model</label>
+        <div class="select-box">
+          <select id="tts-model-select">
+            <option value="vieneu" selected>VieNeu-TTS v3 Turbo</option>
+            <option value="melotts">MeloTTS</option>
+          </select>
+          <svg aria-hidden="true" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M6 9l6 6 6-6"/>
+          </svg>
+        </div>
+      </div>
+
+      <div class="control-group melo-setting" id="melo-language-group" hidden>
+        <label for="melo-language-select">MeloTTS Language</label>
+        <div class="select-box">
+          <select id="melo-language-select">
+            <option value="EN" selected>English</option>
+            <option value="ES">Spanish</option>
+            <option value="FR">French</option>
+            <option value="ZH">Chinese</option>
+            <option value="JP">Japanese</option>
+            <option value="KR">Korean</option>
+          </select>
+          <svg aria-hidden="true" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M6 9l6 6 6-6"/>
+          </svg>
+        </div>
+      </div>
+
+      <div class="control-group melo-setting" id="melo-speaker-group" hidden>
+        <label for="melo-speaker-select">MeloTTS Speaker</label>
+        <div class="select-box">
+          <select id="melo-speaker-select">
+            <option value="EN-US" selected>EN-US</option>
+            <option value="EN-BR">EN-BR</option>
+            <option value="EN_INDIA">EN_INDIA</option>
+            <option value="EN-AU">EN-AU</option>
+            <option value="EN-Default">EN-Default</option>
+          </select>
+          <svg aria-hidden="true" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M6 9l6 6 6-6"/>
+          </svg>
+        </div>
+      </div>
+
+      <p class="model-note" id="model-note" hidden>
+        MeloTTS uses built-in speakers and does not support voice cloning or Vietnamese.
+      </p>
+    </section>
+
+    <div class="workspace" id="workspace">
+      <section class="table-panel" id="table-panel" aria-label="Subtitle content">
+        <div class="table-panel-header">
+          <h2 class="panel-title" id="table-title">Subtitle Segments</h2>
+          <div class="filter-wrap">
+            <label for="status-filter">Status</label>
+            <div class="select-box select-box--compact">
+              <select id="status-filter">
+                <option value="all" selected>All</option>
+                <option value="success">Success</option>
+                <option value="fail">Fail</option>
+              </select>
+              <svg aria-hidden="true" viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M6 9l6 6 6-6"/>
+              </svg>
+            </div>
+          </div>
+        </div>
+
+        <div class="table-container" id="table-container" tabindex="0">
+          <table>
+            <thead id="table-head">
+              <tr>
+                <th class="col-id" scope="col">ID</th>
+                <th class="col-duration" scope="col">Duration</th>
+                <th class="col-text" scope="col">Text Content</th>
+                <th class="col-speed" scope="col">Speed</th>
+                <th class="col-status" scope="col">Status</th>
+                <th class="col-action" scope="col">Actions</th>
+              </tr>
+            </thead>
+            <tbody id="subtitle-rows"></tbody>
+          </table>
+          <p class="empty-state" id="empty-state">Choose an SRT file to preview its content.</p>
+        </div>
+
+        <div class="table-footer">
+          <div class="footer-left">
+            <div class="filter-wrap">
+              <label for="page-size-select">Show</label>
+              <div class="select-box select-box--compact">
+                <select id="page-size-select">
+                  <option value="auto" selected>Auto</option>
+                  <option value="10">10</option>
+                  <option value="20">20</option>
+                  <option value="50">50</option>
+                  <option value="100">100</option>
+                </select>
+                <svg aria-hidden="true" viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M6 9l6 6 6-6"/>
+                </svg>
+              </div>
+              <label for="page-size-select">per page</label>
+            </div>
+          </div>
+          <nav class="pagination" id="pagination" aria-label="Subtitle pagination"></nav>
+          <div class="goto-wrap">
+            <label for="goto-page-input">Go to</label>
+            <input class="goto-input" id="goto-page-input" type="number" min="1" value="1" inputmode="numeric">
+            <span class="goto-total" id="goto-page-total">/ 1</span>
+          </div>
+        </div>
+      </section>
+
+      <div class="panel-resizer" id="panel-resizer" role="separator" aria-orientation="vertical" aria-label="Resize panels" tabindex="0"></div>
+
+      <section class="processing-panel" id="processing-panel" aria-label="Processing">
+        <div class="processing-header">
+          <h2 class="panel-title">Processing</h2>
+          <div class="elapsed-wrap">
+            <span class="elapsed-label">Elapsed time:</span>
+            <span class="elapsed-value" id="elapsed-time">00:00:00</span>
+          </div>
+        </div>
+
+        <div class="progress-info">
+          <span class="status-text" id="status-text" role="status" aria-live="polite">Ready</span>
+          <span class="progress-percent" id="progress-percent"></span>
+        </div>
+        <progress id="progress" max="100" value="0" aria-label="Synthesis progress">0%</progress>
+
+        <div class="log-header">
+          <h3 class="log-title" id="log-title">Activity Log</h3>
+          <button class="btn-clear-log" id="clear-log-button" type="button">
+            <svg aria-hidden="true" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13"/>
+            </svg>
+            <span>Clear</span>
+          </button>
+        </div>
+        <div class="log-console" id="log-console" role="log" aria-live="polite">
+          <div><span class="time">[--:--:--]</span> — <span class="info">System Ready</span></div>
+        </div>
+
+        <div class="processing-actions">
+          <button class="btn-secondary" id="save-button" type="button" disabled>
+            <svg aria-hidden="true" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M5 4h11l3 3v13H5z"/>
+              <path d="M8 4v6h8V4M8 20v-6h8v6"/>
+            </svg>
+            <span>Save Project</span>
+          </button>
+          <button class="btn-secondary" id="retry-button" type="button" disabled>
+            <svg aria-hidden="true" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M20 12a8 8 0 1 1-2.34-5.66"/>
+              <path d="M20 4v4h-4"/>
+            </svg>
+            <span>Retry Failed</span>
+          </button>
+          <button class="btn-danger" id="cancel-button" type="button" disabled>
+            <svg aria-hidden="true" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round">
+              <path d="M6 6l12 12M18 6L6 18"/>
+            </svg>
+            <span>Cancel</span>
+          </button>
+        </div>
+      </section>
+    </div>
+  </main>
+
+  <script src="renderer.js"></script>
+</body>
+</html>

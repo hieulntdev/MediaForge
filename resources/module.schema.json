@@ -1,0 +1,49 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://mediaforge.local/schemas/module.schema.json",
+  "title": "MediaForge module manifest",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "id", "version", "displayName", "description", "frontendRoute",
+    "runtime", "actions", "capabilities", "inputs", "outputs", "adapter", "ui"
+  ],
+  "properties": {
+    "$schema": { "type": "string" },
+    "id": { "type": "string", "pattern": "^[a-z][a-z0-9_]*$" },
+    "version": { "type": "string", "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$" },
+    "displayName": { "type": "string", "minLength": 1 },
+    "description": { "type": "string", "minLength": 1 },
+    "frontendRoute": { "type": "string", "pattern": "^[a-z0-9-]+$" },
+    "runtime": { "type": "string", "minLength": 1 },
+    "resourceClass": { "enum": ["light", "medium", "heavy"] },
+    "actions": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": { "type": "string", "pattern": "^[a-z][a-z0-9_]*$" }
+    },
+    "capabilities": {
+      "type": "object",
+      "required": ["cancel", "pause"],
+      "properties": {
+        "cancel": { "type": "boolean" },
+        "pause": { "type": "boolean" }
+      },
+      "additionalProperties": false
+    },
+    "inputs": { "type": "array", "items": { "type": "string" } },
+    "outputs": { "type": "array", "items": { "type": "string" } },
+    "adapter": { "type": "string", "pattern": "^[a-z0-9-]+\\.js$" },
+    "ui": {
+      "type": "object",
+      "required": ["entry", "accent", "bridge"],
+      "properties": {
+        "entry": { "type": "string", "minLength": 1 },
+        "accent": { "enum": ["blue", "amber", "violet"] },
+        "bridge": { "enum": ["biliAPI", "sfxApi", "srtAPI"] }
+      },
+      "additionalProperties": false
+    }
+  }
+}

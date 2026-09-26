@@ -1,0 +1,8 @@
+{
+  "id": "base",
+  "environmentVariable": "MEDIAFORGE_BASE_PYTHON",
+  "legacyInterpreter": "Bili-Downloader/.venv/bin/python3",
+  "python": "3.12",
+  "architecture": "arm64"
+}
+

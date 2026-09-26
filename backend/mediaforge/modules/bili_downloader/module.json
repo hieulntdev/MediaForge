@@ -1,0 +1,16 @@
+{
+  "$schema": "../../../../resources/module.schema.json",
+  "id": "bili_downloader",
+  "version": "1.0.0",
+  "displayName": "Bili Downloader",
+  "description": "Download Bilibili video, subtitles, and metadata at the best accessible quality.",
+  "frontendRoute": "bili-downloader",
+  "runtime": "base",
+  "resourceClass": "medium",
+  "actions": ["check_account", "get_settings", "set_settings", "analyze", "download", "pause", "resume", "cancel"],
+  "capabilities": { "cancel": true, "pause": true },
+  "inputs": ["url", "file.link-list"],
+  "outputs": ["media.video", "subtitle.srt"],
+  "adapter": "desktop-adapter.js",
+  "ui": { "entry": "Bili-Downloader/electron-app/index.html", "accent": "blue", "bridge": "biliAPI" }
+}

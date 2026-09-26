@@ -1,0 +1,21 @@
+# VieNeu-TTS v3 Turbo runtime for macOS on Apple Silicon (Python 3.10+).
+# External runtime dependency: ffmpeg on PATH (brew install ffmpeg).
+#
+# studio.sh installs this list first and then installs vieneu with --no-deps,
+# avoiding unused UI/audio extras while keeping every runtime package pinned:
+#
+#   python3 -m pip install --only-binary=:all: -r requirements.txt
+#   python3 -m pip install --no-deps vieneu==3.3.0
+sea-g2p==0.9.1
+onnxruntime==1.29.0
+numpy==2.5.2
+soundfile==0.14.0
+soxr==1.1.0
+kaldi-native-fbank==1.22.3
+tokenizers==0.23.1
+huggingface_hub==1.29.0
+hf-xet==1.6.0
+PyYAML==6.0.3
+faster-whisper==1.0.3
+requests==2.34.2
+psutil==6.1.1

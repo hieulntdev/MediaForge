@@ -1,0 +1,16 @@
+{
+  "$schema": "../../../../resources/module.schema.json",
+  "id": "sfx_converter",
+  "version": "1.0.0",
+  "displayName": "SFX Converter",
+  "description": "Extract the sound-effects stem from a local video with SFC-Locoformer.",
+  "frontendRoute": "sfx-converter",
+  "runtime": "sfx",
+  "resourceClass": "heavy",
+  "actions": ["extract_sfx", "cancel", "model_status", "prefetch_model"],
+  "capabilities": { "cancel": true, "pause": false },
+  "inputs": ["media.video"],
+  "outputs": ["media.audio.sfx"],
+  "adapter": "desktop-adapter.js",
+  "ui": { "entry": "SFX-Converter/electron/renderer/index.html", "accent": "amber", "bridge": "sfxApi" }
+}

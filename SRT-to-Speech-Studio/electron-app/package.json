@@ -1,0 +1,17 @@
+{
+  "name": "srt-to-speech-studio-electron",
+  "version": "3.0.0",
+  "description": "SRT-to-Speech Studio with selectable VieNeu-TTS and MeloTTS backends",
+  "main": "main.js",
+  "author": "SRT-to-Speech Studio",
+  "license": "MIT",
+  "scripts": {
+    "start": "electron .",
+    "check": "node --check main.js && node --check preload.js && node --check theme-init.js && node --check renderer.js",
+    "test:layout": "node tests/run-layout-smoke.js",
+    "test": "node --check main.js && node --check preload.js && node --check theme-init.js && node --check renderer.js && node --check tests/layout-smoke.js && node --check tests/run-layout-smoke.js && node tests/renderer.test.js && npm run test:layout"
+  },
+  "devDependencies": {
+    "electron": "44.0.0"
+  }
+}

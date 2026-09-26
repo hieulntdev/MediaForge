@@ -1,0 +1,15 @@
+{
+  "name": "bilibili-downloader-electron",
+  "version": "3.0.0",
+  "description": "Bilibili Video Downloader (original master quality) with Electron shell and Python backend",
+  "main": "main.js",
+  "author": "Bilibili Video Downloader",
+  "license": "MIT",
+  "scripts": {
+    "start": "electron .",
+    "check": "node --check main.js && node --check preload.js && node --check renderer.js"
+  },
+  "devDependencies": {
+    "electron": "44.0.0"
+  }
+}

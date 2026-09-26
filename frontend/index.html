@@ -1,0 +1,92 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'nonce-mediaforge-module'; style-src 'self' 'nonce-mediaforge-module'; img-src 'self' data:; frame-src 'self' data: blob:; media-src 'self' file: blob:; object-src 'none'; base-uri 'self' file:; form-action 'none'">
+    <title>MediaForge</title>
+    <link rel="stylesheet" href="./src/shared/styles/tokens.css">
+    <link rel="stylesheet" href="./src/shared/styles/base.css">
+    <link rel="stylesheet" href="./src/shared/styles/components.css">
+    <link rel="stylesheet" href="./src/shared/styles/layout.css">
+    <script src="./src/app/bootstrap.js" type="module"></script>
+  </head>
+  <body>
+    <div class="app-shell">
+      <header class="topbar">
+        <a class="brand" href="#/dashboard" aria-label="MediaForge dashboard">
+          <svg class="brand-mark" viewBox="0 0 24 24" aria-hidden="true"><path d="m12 2 8.5 5v10L12 22l-8.5-5V7Z"></path><path d="m12 7 4.25 2.5v5L12 17l-4.25-2.5v-5Z"></path></svg>
+          <span>MediaForge</span>
+          <span class="version">v1.0.0</span>
+        </a>
+        <label class="global-search">
+          <span class="visually-hidden">Search modules</span>
+          <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6"></circle><path d="m16 16 4 4"></path></svg>
+          <input id="global-search" type="search" placeholder="Search modules..." autocomplete="off">
+        </label>
+        <button id="theme-toggle" class="icon-button" type="button" aria-label="Switch to dark mode" title="Switch to dark mode">
+          <svg class="moon-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 15.25A8.5 8.5 0 0 1 8.75 4 8.5 8.5 0 1 0 20 15.25Z"></path></svg>
+          <svg class="sun-icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3.5"></circle><path d="M12 2v2M12 20v2M4.93 4.93l1.42 1.42M17.65 17.65l1.42 1.42M2 12h2M20 12h2M4.93 19.07l1.42-1.42M17.65 6.35l1.42-1.42"></path></svg>
+        </button>
+      </header>
+
+      <div class="shell-body">
+        <aside class="sidebar" aria-label="Primary navigation">
+          <nav>
+            <a class="nav-item is-active" href="#/dashboard" data-route="dashboard">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 11.5 12 4l9 7.5"></path><path d="M5.5 10v10h13V10M9.5 20v-6h5v6"></path></svg>
+              Dashboard
+            </a>
+            <div class="nav-label">Modules</div>
+            <div id="module-navigation"></div>
+          </nav>
+          <section class="sidebar-status" aria-labelledby="runtime-title">
+            <h2 id="runtime-title">Runtime health</h2>
+            <p id="runtime-status" role="status" aria-live="polite">Checking local tools…</p>
+          </section>
+        </aside>
+
+        <main class="content">
+          <section id="dashboard-view" class="dashboard-view" aria-labelledby="page-title">
+            <header class="page-header">
+              <div>
+                <h1 id="page-title">Module Management Dashboard</h1>
+                <p>Open and monitor the media tools installed in MediaForge.</p>
+              </div>
+              <time id="dashboard-clock" aria-label="Current local time"></time>
+            </header>
+            <section class="module-panel" aria-labelledby="modules-title">
+              <header class="panel-header">
+                <div>
+                  <h2 id="modules-title">All Modules</h2>
+                  <p>Discovered from module manifests. New modules appear here automatically.</p>
+                </div>
+                <label class="panel-search">
+                  <span class="visually-hidden">Filter modules</span>
+                  <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6"></circle><path d="m16 16 4 4"></path></svg>
+                  <input id="module-search" type="search" placeholder="Search modules..." autocomplete="off">
+                </label>
+              </header>
+              <div id="module-list" class="module-list" aria-live="polite"></div>
+              <p id="module-empty" class="empty-state" hidden>No modules match this search.</p>
+            </section>
+          </section>
+
+          <section id="module-view" class="module-view" hidden aria-labelledby="module-view-title">
+            <header class="module-view-header">
+              <button id="back-button" class="button button-secondary" type="button">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m15 18-6-6 6-6"></path></svg>
+                Dashboard
+              </button>
+              <div>
+                <h1 id="module-view-title">Module</h1>
+                <p id="module-view-description"></p>
+              </div>
+            </header>
+            <iframe id="module-frame" title="MediaForge module"></iframe>
+          </section>
+        </main>
+      </div>
+    </div>
+  </body>
+</html>

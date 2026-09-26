@@ -1,0 +1,14 @@
+[build-system]
+requires = ["setuptools>=75", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "mediaforge-core"
+version = "1.0.0"
+description = "Lightweight MediaForge contracts and shared runtime utilities"
+requires-python = ">=3.12,<3.13"
+
+[tool.setuptools.packages.find]
+where = ["backend"]
+include = ["mediaforge*"]
+

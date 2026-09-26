@@ -1,0 +1,16 @@
+{
+  "$schema": "../../../../resources/module.schema.json",
+  "id": "srt_to_speech",
+  "version": "1.0.0",
+  "displayName": "SRT-to-Speech",
+  "description": "Synthesize duration-matched speech for SRT cues with VieNeu or MeloTTS.",
+  "frontendRoute": "srt-to-speech",
+  "runtime": "tts-vieneu",
+  "resourceClass": "heavy",
+  "actions": ["synthesize", "retry_cue", "validate_content", "package_project", "preview_audio", "clear_retry_state", "cancel"],
+  "capabilities": { "cancel": true, "pause": false },
+  "inputs": ["subtitle.srt", "audio.voice-reference"],
+  "outputs": ["media.audio.speech", "project.zsp"],
+  "adapter": "desktop-adapter.js",
+  "ui": { "entry": "SRT-to-Speech-Studio/electron-app/index.html", "accent": "violet", "bridge": "srtAPI" }
+}

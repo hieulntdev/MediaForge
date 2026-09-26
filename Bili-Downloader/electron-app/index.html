@@ -1,0 +1,176 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Bilibili Video Downloader</title>
+  <script>
+    try {
+      const savedTheme = localStorage.getItem('bilibili-downloader:theme');
+      if (savedTheme === 'light' || savedTheme === 'dark') {
+        document.documentElement.dataset.theme = savedTheme;
+      }
+    } catch (_) {
+      /* Local storage may be unavailable; the light default remains usable. */
+    }
+  </script>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <header class="app-header">
+    <svg class="app-icon" viewBox="0 0 24 24" width="22" height="22" aria-hidden="true">
+      <rect x="2.5" y="4.5" width="19" height="15" rx="4" fill="none" stroke="currentColor" stroke-width="1.8" />
+      <path d="m8.5 2.5 3.5 3 3.5-3M9.5 9l6 3-6 3z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" />
+    </svg>
+    <div class="app-titles">
+      <h1>Bilibili Video Downloader</h1>
+      <p class="subtitle">Download Bilibili videos in high quality, fast and easy.</p>
+    </div>
+    <div class="header-actions">
+      <span id="account-status" class="account-status" data-status="none" role="status" aria-live="polite">No Cookies</span>
+      <button id="check-account-button" type="button" class="button button-secondary" disabled>
+        <span class="button-icon button-icon-check" aria-hidden="true">
+          <svg viewBox="0 0 24 24"><path d="m5 12 4 4L19 6" /></svg>
+        </span>
+        <span class="button-label">Check Account</span>
+      </button>
+      <button id="theme-toggle" type="button" class="icon-button" aria-label="Switch to dark mode" title="Switch to dark mode">
+        <svg class="theme-icon theme-icon-sun" viewBox="0 0 24 24" aria-hidden="true">
+          <circle cx="12" cy="12" r="3.5" />
+          <path d="M12 2v2M12 20v2M4.93 4.93l1.42 1.42M17.65 17.65l1.42 1.42M2 12h2M20 12h2M4.93 19.07l1.42-1.42M17.65 6.35l1.42-1.42" />
+        </svg>
+        <svg class="theme-icon theme-icon-moon" viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M20.5 15.2A8.5 8.5 0 0 1 8.8 3.5a8.5 8.5 0 1 0 11.7 11.7Z" />
+        </svg>
+      </button>
+    </div>
+  </header>
+
+  <section class="setup-grid" aria-label="Download setup">
+    <div class="field-group">
+      <span class="field-label">Link List File</span>
+      <button id="links-input" type="button" class="field-picker" aria-label="Select link list file" title="Supports .txt and .csv files, one link per line">
+        <svg class="field-icon" viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M6 2.75h8l4 4V21.25H6zM14 2.75v4h4M9 11h6M9 15h6" />
+        </svg>
+        <span id="links-path" class="field-path">Choose a file</span>
+      </button>
+    </div>
+    <div class="field-group">
+      <span class="field-label">Output Folder</span>
+      <button id="output-input" type="button" class="field-picker" aria-label="Select output folder">
+        <svg class="field-icon" viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M3 6.75h7l2 2h9v10.5H3z" />
+        </svg>
+        <span id="output-path" class="field-path">Choose an output folder</span>
+      </button>
+    </div>
+    <div class="field-group">
+      <span class="field-label">Cookies File</span>
+      <button id="cookies-input" type="button" class="field-picker" aria-label="Select cookies file" title="Export cookies from your browser">
+        <svg class="field-icon" viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M20.5 13.5a8.5 8.5 0 1 1-10-10 4 4 0 0 0 4.5 4.5 4 4 0 0 0 5.5 5.5Z" />
+          <circle cx="8.5" cy="12.5" r=".75" fill="currentColor" stroke="none" />
+          <circle cx="12.5" cy="16.5" r=".75" fill="currentColor" stroke="none" />
+        </svg>
+        <span id="cookies-path" class="field-path">Choose a file</span>
+      </button>
+    </div>
+    <div class="primary-action-group">
+      <button id="start-button" type="button" class="button button-primary button-large" disabled>
+        <span class="button-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24"><path class="fill-icon" d="m9 6 9 6-9 6z" /></svg>
+        </span>
+        <span class="button-label">Start Download</span>
+      </button>
+    </div>
+  </section>
+
+  <section class="progress-panel" aria-label="Overall download progress">
+    <div class="progress-content">
+      <div class="progress-summary">
+        <span id="progress-status" class="progress-label" role="status" aria-live="polite">Overall Progress</span>
+        <span id="progress-count" class="progress-count">0 / 0 (0%)</span>
+        <span id="eta-label" class="eta-label"></span>
+      </div>
+      <progress id="progress-bar" class="progress-bar" max="100" value="0" aria-label="Overall download progress"></progress>
+    </div>
+    <div class="progress-actions">
+      <button id="pause-button" type="button" class="button button-secondary" data-icon="pause" disabled>
+        <span class="button-icon button-icon-pause" aria-hidden="true">
+          <svg viewBox="0 0 24 24"><path class="fill-icon" d="M7 5h4v14H7zM14 5h4v14h-4z" /></svg>
+        </span>
+        <span class="button-icon button-icon-play" aria-hidden="true">
+          <svg viewBox="0 0 24 24"><path class="fill-icon" d="m8 5 11 7-11 7z" /></svg>
+        </span>
+        <span class="button-label">Pause</span>
+      </button>
+      <button id="cancel-button" type="button" class="button button-destructive" disabled>
+        <span class="button-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24"><path d="m6 6 12 12M18 6 6 18" /></svg>
+        </span>
+        <span class="button-label">Cancel</span>
+      </button>
+    </div>
+  </section>
+
+  <main class="workspace" id="main-split">
+    <section class="panel table-panel" aria-labelledby="downloads-title">
+      <div class="panel-header">
+        <h2 id="downloads-title">Downloads</h2>
+      </div>
+      <div class="table-scroll" tabindex="0" aria-label="Downloads table">
+        <table class="download-table">
+          <thead>
+            <tr>
+              <th class="col-id" scope="col">ID</th>
+              <th class="col-link" scope="col">Link</th>
+              <th class="col-detail" scope="col">Detail</th>
+              <th class="col-status" scope="col">Status</th>
+              <th class="col-action" scope="col">Actions</th>
+            </tr>
+          </thead>
+          <tbody id="table-body"></tbody>
+        </table>
+        <div id="empty-state" class="empty-state" hidden>Select a link list file, then start the download.</div>
+      </div>
+      <div class="pagination-row">
+        <div class="page-size-group">
+          <label for="page-size-select">Show</label>
+          <span class="select-shell select-shell-compact">
+            <select id="page-size-select" class="page-size" aria-label="Rows per page">
+              <option value="auto">Auto</option>
+              <option value="5">5</option>
+              <option value="10">10</option>
+              <option value="20">20</option>
+              <option value="50">50</option>
+            </select>
+            <svg class="select-chevron" viewBox="0 0 16 16" aria-hidden="true"><path d="m4 6 4 4 4-4" /></svg>
+          </span>
+          <span>per page</span>
+        </div>
+        <nav id="pagination" class="pagination" aria-label="Pagination"></nav>
+        <div class="page-goto">
+          <label for="goto-input">Go to</label>
+          <input id="goto-input" class="goto-input" type="number" min="1" value="1" inputmode="numeric" />
+          <span id="page-total" class="page-total">/ 1</span>
+        </div>
+      </div>
+    </section>
+
+    <div id="split-divider" class="split-divider" role="separator" aria-label="Resize downloads and activity panels" aria-orientation="vertical" aria-valuemin="0" aria-valuemax="100" aria-valuenow="25" tabindex="0" title="Drag or use arrow keys to resize"></div>
+
+    <aside class="panel activity-panel" aria-labelledby="activity-title">
+      <div class="panel-header activity-header">
+        <h2 id="activity-title">Activity Log</h2>
+        <button id="clear-log-button" type="button" class="button button-ghost button-micro">Clear</button>
+      </div>
+      <div id="log" class="log" role="log" aria-live="polite" tabindex="0">
+        <div class="log-empty">No activity yet.</div>
+      </div>
+    </aside>
+  </main>
+
+  <script src="renderer.js"></script>
+</body>
+</html>
