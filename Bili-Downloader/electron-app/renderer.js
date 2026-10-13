@@ -2,6 +2,16 @@ const MAX_LOG_ROWS = 500;
 const AUTO_PAGE_SIZE = 'auto';
 const THEME_STORAGE_KEY = 'bilibili-downloader:theme';
 const SPLIT_STORAGE_KEY = 'bilibili-downloader:activity-panel-ratio';
+const COLUMN_STORAGE_KEY = 'bilibili-downloader:column-widths';
+const UI_STATE_STORAGE_KEY = 'bilibili-downloader:ui-state-v2';
+const COLUMN_DEFINITIONS = Object.freeze({
+  id: { width: 64, min: 56 },
+  link: { width: 280, min: 160 },
+  detail: { width: 290, min: 180 },
+  status: { width: 120, min: 104 },
+  speed: { width: 120, min: 104 },
+  action: { width: 160, min: 144 },
+});
 
 const state = {
   items: [],
@@ -17,9 +27,12 @@ const state = {
   cancelRequested: false,
   activeRow: null,
   activeFraction: 0,
-  accountStatus: 'none',    // none | checking | valid | invalid | expired | error
+  eta: '',
+  accountStatus: 'none',    // none | checking | standardized cookie status
   accountUsername: '',
   accountMessage: '',
+  logs: [],
+  revision: 0,
 };
 
 const elements = {
@@ -43,13 +56,13 @@ const elements = {
   pageTotal: document.querySelector('#page-total'),
   mainSplit: document.querySelector('#main-split'),
   splitDivider: document.querySelector('#split-divider'),
-  accountStatus: document.querySelector('#account-status'),
   checkAccountButton: document.querySelector('#check-account-button'),
   log: document.querySelector('#log'),
   clearLogButton: document.querySelector('#clear-log-button'),
   themeToggle: document.querySelector('#theme-toggle'),
   tableScroll: document.querySelector('.table-scroll'),
   progressStatus: document.querySelector('#progress-status'),
+  downloadTable: document.querySelector('.download-table'),
 };
 
 /* ---- theme ---- */
@@ -93,6 +106,20 @@ function fmtBytes(size) {
   return String(size);
 }
 
+function fmtSpeed(bytesPerSecond) {
+  let value = Number(bytesPerSecond);
+  if (!Number.isFinite(value) || value < 0) return '—';
+  for (const unit of ['B/s', 'KB/s', 'MB/s', 'GB/s']) {
+    if (value < 1000 || unit === 'GB/s') {
+      if (unit === 'B/s') return `${Math.round(value)} B/s`;
+      if (value >= 100) return `${Math.round(value)} ${unit}`;
+      return `${value.toFixed(2)} ${unit}`;
+    }
+    value /= 1000;
+  }
+  return '—';
+}
+
 function fmtViews(count) {
   if (count >= 1000000) return `${(count / 1000000).toFixed(1)}M views`;
   if (count >= 1000) return `${(count / 1000).toFixed(1)}K views`;
@@ -100,12 +127,12 @@ function fmtViews(count) {
 }
 
 /* ---- log ---- */
-function appendLog(level, message) {
+function appendLogElement({ level, message, timestamp }) {
   const empty = elements.log.querySelector('.log-empty');
   if (empty) empty.remove();
   const row = document.createElement('div');
   row.className = 'log-row';
-  const time = new Date().toLocaleTimeString('en-GB', { hour12: false });
+  const time = new Date(timestamp).toLocaleTimeString('en-GB', { hour12: false });
   const timeSpan = document.createElement('span');
   timeSpan.className = 'log-time';
   timeSpan.textContent = `[${time}]`;
@@ -118,6 +145,26 @@ function appendLog(level, message) {
     elements.log.firstElementChild.remove();
   }
   elements.log.scrollTop = elements.log.scrollHeight;
+}
+
+function appendLog(level, message, { timestamp = Date.now(), persist = true } = {}) {
+  const entry = { level: level || 'INFO', message: String(message || ''), timestamp };
+  state.logs.push(entry);
+  if (state.logs.length > MAX_LOG_ROWS) state.logs.splice(0, state.logs.length - MAX_LOG_ROWS);
+  appendLogElement(entry);
+  if (persist) persistUIState();
+}
+
+function renderLogs() {
+  elements.log.replaceChildren();
+  if (state.logs.length === 0) {
+    const empty = document.createElement('div');
+    empty.className = 'log-empty';
+    empty.textContent = 'No activity yet.';
+    elements.log.append(empty);
+    return;
+  }
+  for (const entry of state.logs) appendLogElement(entry);
 }
 
 /* ---- progress ---- */
@@ -138,13 +185,16 @@ function updateOverall() {
   if (state.phase === 'resolving') {
     elements.progressStatus.textContent = 'Resolving video details…';
   } else if (state.phase === 'downloading') {
-    elements.progressStatus.textContent = state.paused ? 'Download paused' : 'Downloading';
+    elements.progressStatus.textContent = state.cancelRequested
+      ? 'Cancelling…'
+      : (state.paused ? 'Download paused' : 'Downloading');
   } else if (total > 0 && done === total) {
     elements.progressStatus.textContent = 'Download complete';
   } else {
     elements.progressStatus.textContent = 'Overall Progress';
   }
   setProgress(percent);
+  elements.etaLabel.textContent = state.eta ? `ETA: ${state.eta}` : '';
 }
 
 /* ---- table ---- */
@@ -189,6 +239,9 @@ function rowFor(item) {
   detail.className = 'status-detail';
   statusCell.append(label, detail);
 
+  const speedCell = document.createElement('td');
+  speedCell.className = 'col-speed';
+
   const actionCell = document.createElement('td');
   actionCell.className = 'col-action';
   const actions = document.createElement('div');
@@ -206,7 +259,7 @@ function rowFor(item) {
   actions.append(openBtn, retryBtn);
   actionCell.append(actions);
 
-  tr.append(idCell, linkCell, detailCell, statusCell, actionCell);
+  tr.append(idCell, linkCell, detailCell, statusCell, speedCell, actionCell);
   return tr;
 }
 
@@ -214,9 +267,14 @@ function applyRowStatus(tr, row) {
   const s = state.rowState.get(row) || { status: 'Queued', detail: '' };
   const label = tr.querySelector('.status-label');
   const detail = tr.querySelector('.status-detail');
+  const speed = tr.querySelector('.col-speed');
   label.textContent = s.status || 'Queued';
   label.dataset.status = (s.status || 'Queued').toLowerCase();
   detail.textContent = s.detail || '';
+  const statusKey = String(s.status || '').toLowerCase();
+  if (state.paused && statusKey === 'downloading') speed.textContent = 'Paused';
+  else if (statusKey === 'downloading') speed.textContent = fmtSpeed(s.speed);
+  else speed.textContent = '—';
   const retryBtn = tr.querySelector('.btn-retry');
   retryBtn.disabled = s.status !== 'Failed' || state.phase !== 'idle';
 }
@@ -305,6 +363,93 @@ function updateAutoPageSize() {
   state.page = Math.min(state.page, pageCount());
   renderRows();
   renderPagination();
+}
+
+/* ---- resizable download columns ---- */
+function loadColumnWidths() {
+  const widths = Object.fromEntries(
+    Object.entries(COLUMN_DEFINITIONS).map(([key, definition]) => [key, definition.width]),
+  );
+  try {
+    const saved = JSON.parse(localStorage.getItem(COLUMN_STORAGE_KEY) || '{}');
+    for (const [key, definition] of Object.entries(COLUMN_DEFINITIONS)) {
+      const width = Number(saved[key]);
+      if (Number.isFinite(width)) widths[key] = Math.max(definition.min, Math.round(width));
+    }
+  } catch (_) {
+    /* Default widths remain available when preference storage is unavailable. */
+  }
+  return widths;
+}
+
+const columnWidths = loadColumnWidths();
+
+function applyColumnWidths({ persist = false } = {}) {
+  let total = 0;
+  for (const [key, definition] of Object.entries(COLUMN_DEFINITIONS)) {
+    columnWidths[key] = Math.max(definition.min, Math.round(columnWidths[key]));
+    document.documentElement.style.setProperty(`--column-${key}-width`, `${columnWidths[key]}px`);
+    const handle = elements.downloadTable.querySelector(`th[data-column="${key}"] .column-resizer`);
+    if (handle) handle.setAttribute('aria-valuenow', String(columnWidths[key]));
+    total += columnWidths[key];
+  }
+  document.documentElement.style.setProperty('--download-table-width', `${total}px`);
+  if (persist) {
+    try {
+      localStorage.setItem(COLUMN_STORAGE_KEY, JSON.stringify(columnWidths));
+    } catch (_) {
+      /* The current resize still works if preference storage is unavailable. */
+    }
+  }
+}
+
+function installColumnResizers() {
+  for (const header of elements.downloadTable.querySelectorAll('th[data-column]')) {
+    const key = header.dataset.column;
+    const handle = document.createElement('span');
+    handle.className = 'column-resizer';
+    handle.tabIndex = 0;
+    handle.setAttribute('role', 'separator');
+    handle.setAttribute('aria-orientation', 'vertical');
+    handle.setAttribute('aria-label', `Resize ${header.textContent.trim()} column`);
+    handle.setAttribute('aria-valuemin', String(COLUMN_DEFINITIONS[key].min));
+    handle.title = 'Drag or use arrow keys to resize';
+    let drag = null;
+    handle.addEventListener('pointerdown', (event) => {
+      if (event.button !== 0) return;
+      drag = { x: event.clientX, width: columnWidths[key] };
+      handle.classList.add('is-dragging');
+      handle.setPointerCapture(event.pointerId);
+      event.preventDefault();
+    });
+    handle.addEventListener('pointermove', (event) => {
+      if (!drag) return;
+      columnWidths[key] = Math.max(COLUMN_DEFINITIONS[key].min, drag.width + event.clientX - drag.x);
+      applyColumnWidths();
+    });
+    const finish = (event) => {
+      if (!drag) return;
+      drag = null;
+      handle.classList.remove('is-dragging');
+      if (handle.hasPointerCapture(event.pointerId)) handle.releasePointerCapture(event.pointerId);
+      applyColumnWidths({ persist: true });
+    };
+    handle.addEventListener('pointerup', finish);
+    handle.addEventListener('pointercancel', finish);
+    handle.addEventListener('keydown', (event) => {
+      if (!['ArrowLeft', 'ArrowRight'].includes(event.key)) return;
+      const delta = event.key === 'ArrowLeft' ? -8 : 8;
+      columnWidths[key] = Math.max(COLUMN_DEFINITIONS[key].min, columnWidths[key] + delta);
+      applyColumnWidths({ persist: true });
+      event.preventDefault();
+    });
+    handle.addEventListener('dblclick', () => {
+      columnWidths[key] = COLUMN_DEFINITIONS[key].width;
+      applyColumnWidths({ persist: true });
+    });
+    header.append(handle);
+  }
+  applyColumnWidths();
 }
 
 /* ---- splitter (table <-> activity log) ---- */
@@ -413,24 +558,133 @@ window.addEventListener('resize', applySideRatio);
 
 /* ---- account ---- */
 function accountStatusLabel() {
-  switch (state.accountStatus) {
-    case 'checking': return 'Checking account…';
-    case 'valid': return state.accountUsername
-      ? `Logged in as: ${state.accountUsername}`
-      : 'Account valid';
-    case 'invalid': return 'Invalid cookies';
-    case 'expired': return 'Cookies expired';
-    case 'error': return 'Check Account failed';
-    default: return 'No Cookies';
-  }
+  return window.BiliAccountStatus.label(
+    state.accountStatus,
+    state.accountUsername,
+    state.accountMessage,
+  );
 }
 
 function renderAccount() {
   const checking = state.accountStatus === 'checking';
-  elements.accountStatus.textContent = accountStatusLabel();
-  elements.accountStatus.dataset.status = state.accountStatus;
   elements.checkAccountButton.disabled = checking || !state.cookiesFile;
+  elements.checkAccountButton.setAttribute('aria-busy', String(checking));
   setButtonLabel(elements.checkAccountButton, checking ? 'none' : 'check', checking ? 'Checking…' : 'Check Account');
+}
+
+/* ---- renderer persistence and backend hydration ---- */
+function persistUIState() {
+  try {
+    localStorage.setItem(UI_STATE_STORAGE_KEY, JSON.stringify({
+      items: state.items,
+      rowState: [...state.rowState.entries()],
+      page: state.page,
+      pageSize: state.pageSize,
+      linksFile: state.linksFile,
+      outputDir: state.outputDir,
+      cookiesFile: state.cookiesFile,
+      phase: state.phase,
+      paused: state.paused,
+      cancelRequested: state.cancelRequested,
+      activeRow: state.activeRow,
+      activeFraction: state.activeFraction,
+      eta: state.eta,
+      accountStatus: state.accountStatus,
+      accountUsername: state.accountUsername,
+      accountMessage: state.accountMessage,
+      logs: state.logs.slice(-MAX_LOG_ROWS),
+      revision: state.revision,
+    }));
+  } catch (_) {
+    /* Backend hydration remains authoritative when local storage is unavailable. */
+  }
+}
+
+function restoreCachedUI() {
+  try {
+    const saved = JSON.parse(localStorage.getItem(UI_STATE_STORAGE_KEY) || 'null');
+    if (!saved || typeof saved !== 'object') return;
+    state.items = Array.isArray(saved.items) ? saved.items : [];
+    state.rowState = new Map(Array.isArray(saved.rowState) ? saved.rowState : []);
+    state.page = Math.max(1, Number(saved.page) || 1);
+    state.pageSize = saved.pageSize === AUTO_PAGE_SIZE
+      ? AUTO_PAGE_SIZE : (Number(saved.pageSize) || AUTO_PAGE_SIZE);
+    state.linksFile = saved.linksFile || '';
+    state.outputDir = saved.outputDir || '';
+    state.cookiesFile = saved.cookiesFile || '';
+    // A cached busy flag is never authoritative after a full application restart.
+    state.phase = 'idle';
+    state.paused = false;
+    state.cancelRequested = false;
+    state.activeRow = null;
+    state.activeFraction = 0;
+    state.eta = saved.eta || '';
+    state.accountStatus = saved.accountStatus || 'none';
+    state.accountUsername = saved.accountUsername || '';
+    state.accountMessage = saved.accountMessage || '';
+    state.logs = Array.isArray(saved.logs) ? saved.logs.slice(-MAX_LOG_ROWS) : [];
+    state.revision = 0;
+  } catch (_) {
+    /* Ignore invalid or inaccessible cached UI state. */
+  }
+}
+
+function renderSelectedPaths() {
+  const values = [
+    [elements.linksPath, state.linksFile, 'Choose a file'],
+    [elements.outputPath, state.outputDir, 'Choose an output folder'],
+    [elements.cookiesPath, state.cookiesFile, 'Choose a file'],
+  ];
+  for (const [element, value, fallback] of values) {
+    element.textContent = value || fallback;
+    element.classList.toggle('is-set', Boolean(value));
+  }
+}
+
+function mergeLogs(backendLogs) {
+  const combined = [...state.logs, ...(Array.isArray(backendLogs) ? backendLogs : [])];
+  const seen = new Set();
+  state.logs = combined.filter((entry) => {
+    const key = `${entry.timestamp}|${entry.level}|${entry.message}`;
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  }).sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp)).slice(-MAX_LOG_ROWS);
+}
+
+function applyBackendSnapshot(response) {
+  const snapshot = response?.snapshot;
+  if (!snapshot || Number(snapshot.revision) <= 0) return 0;
+  state.revision = Number(snapshot.revision) || 0;
+  const input = snapshot.input || {};
+  const hasDownloadState = snapshot.phase !== 'idle'
+    || (Array.isArray(snapshot.items) && snapshot.items.length > 0)
+    || Boolean(input.links_file || input.output_dir || input.cookies_file);
+  if (hasDownloadState) {
+    state.phase = snapshot.phase || 'idle';
+    state.paused = Boolean(snapshot.paused);
+    state.cancelRequested = Boolean(snapshot.cancelRequested);
+    state.items = Array.isArray(snapshot.items) ? snapshot.items : [];
+    state.rowState = new Map(Object.entries(snapshot.rowStates || {}).map(([row, value]) => {
+      const next = { ...value };
+      if (!next.detail && next.status === 'Downloading') {
+        next.detail = `${fmtBytes(next.received)} / ${fmtBytes(next.total)}`;
+      }
+      return [Number(row), next];
+    }));
+    state.activeRow = snapshot.activeRow;
+    state.activeFraction = Number(snapshot.activeFraction) || 0;
+    state.eta = snapshot.eta || '';
+    state.linksFile = input.links_file || state.linksFile;
+    state.outputDir = input.output_dir || state.outputDir;
+    state.cookiesFile = input.cookies_file || state.cookiesFile;
+  }
+  state.accountStatus = snapshot.account?.status || state.accountStatus;
+  state.accountUsername = snapshot.account?.username || '';
+  state.accountMessage = snapshot.account?.message || '';
+  state.settings = snapshot.settings || {};
+  mergeLogs(snapshot.logs);
+  return state.revision;
 }
 
 /* ---- controls ---- */
@@ -447,8 +701,8 @@ function refreshControls() {
   const busy = state.phase !== 'idle';
   elements.startButton.disabled = busy || !state.linksFile;
   elements.linksInput.disabled = busy;
-  elements.pauseButton.disabled = state.phase !== 'downloading';
-  elements.cancelButton.disabled = state.phase !== 'downloading';
+  elements.pauseButton.disabled = state.phase !== 'downloading' || state.cancelRequested;
+  elements.cancelButton.disabled = state.phase !== 'downloading' || state.cancelRequested;
 }
 
 function render() {
@@ -459,6 +713,7 @@ function render() {
   refreshControls();
   renderPauseButton();
   renderAccount();
+  persistUIState();
 }
 
 /* ---- actions ---- */
@@ -473,7 +728,7 @@ async function openFolder(outputPath) {
 
 function retryRow(row) {
   if (state.phase !== 'idle') return;
-  state.rowState.set(row, { status: 'Queued', detail: '' });
+  state.rowState.set(row, { status: 'Queued', detail: '', speed: 0 });
   state.phase = 'downloading';
   render();
   appendLog('INFO', `[${row + 1}/${state.items.length}] Retry: ${state.items[row].title}`);
@@ -490,52 +745,63 @@ function onProgress(event) {
   if (event.status === 'downloading') {
     state.activeFraction = event.fraction || 0;
     const detail = `${fmtBytes(event.received)} / ${fmtBytes(event.total)} (${Math.round((event.fraction || 0) * 100)}%)`;
-    state.rowState.set(row, { status: 'Downloading', detail });
-    if (event.eta) elements.etaLabel.textContent = `ETA: ${event.eta}`;
+    state.rowState.set(row, { status: 'Downloading', detail, speed: Number(event.speed) || 0 });
+    state.eta = event.eta || '';
   } else if (event.status === 'finished') {
     state.activeFraction = 1;
-    state.rowState.set(row, { status: 'Downloading', detail: 'Muxing…' });
+    state.eta = '';
+    state.rowState.set(row, { status: 'Processing', detail: 'Processing…', speed: 0 });
   }
   renderRow(row);
   updateOverall();
 }
 
-function logRow(row, status, detail) {
+function logRow(row, status, detail, timestamp = Date.now()) {
   const total = state.items.length;
   const item = state.items.find((it) => it.row === row) || null;
   const title = item ? item.title : '';
   const prefix = `[${row + 1}/${total}]`;
   const key = (status || '').toLowerCase();
   if (key === 'downloading') {
-    appendLog('INFO', `${prefix} Start: ${title}`);
+    appendLog('INFO', `${prefix} Start: ${title}`, { timestamp });
   } else if (key === 'done' || key === 'completed') {
-    appendLog('SUCCESS', `${prefix} Completed: ${title}`);
+    appendLog('SUCCESS', `${prefix} Completed: ${title}`, { timestamp });
   } else if (key === 'failed') {
-    appendLog('ERROR', `${prefix} Error: ${detail} - ${item ? item.url : ''}`);
+    appendLog('ERROR', `${prefix} Error: ${detail} - ${item ? item.url : ''}`, { timestamp });
   }
 }
 
 function onRowUpdate(event) {
   const row = event.row;
-  state.rowState.set(row, { status: event.status, detail: event.detail || '' });
-  if (row === state.activeRow && ['Done', 'Completed', 'Failed'].includes(event.status)) {
+  state.rowState.set(row, { status: event.status, detail: event.detail || '', speed: 0 });
+  if (row === state.activeRow && ['Done', 'Completed', 'Failed', 'Cancelled'].includes(event.status)) {
     state.activeRow = null;
     state.activeFraction = 0;
   }
-  logRow(row, event.status, event.detail);
+  logRow(row, event.status, event.detail, event.snapshotTimestamp || Date.now());
   renderRow(row);
   updateOverall();
 }
 
-function handleBackendEvent(event) {
+function applyBackendEvent(event) {
+  if (Number.isFinite(Number(event.revision))) {
+    if (Number(event.revision) <= state.revision) return;
+    state.revision = Number(event.revision);
+  }
   switch (event.type) {
     case 'log':
-      appendLog(event.level || 'INFO', event.message);
+      appendLog(event.level || 'INFO', event.message, { timestamp: event.snapshotTimestamp || Date.now() });
       break;
     case 'account':
-      state.accountStatus = event.status;
+      state.accountStatus = window.BiliAccountStatus.normalize(event.status);
       state.accountUsername = event.username || '';
       state.accountMessage = event.message || '';
+      const accountLevel = window.BiliAccountStatus.logLevel(state.accountStatus);
+      appendLog(
+        accountLevel,
+        `[${accountLevel}] ${state.accountMessage || accountStatusLabel()}`,
+        { timestamp: event.snapshotTimestamp || Date.now() },
+      );
       renderAccount();
       break;
     case 'settings':
@@ -545,22 +811,25 @@ function handleBackendEvent(event) {
       appendLog('INFO', 'Settings saved.');
       break;
     case 'analyze_progress':
-      appendLog('INFO', `Resolving ${event.index}/${event.total}: ${event.url}`);
+      appendLog('INFO', `Resolving ${event.index}/${event.total}: ${event.url}`, {
+        timestamp: event.snapshotTimestamp || Date.now(),
+      });
       break;
     case 'analyze_done':
       state.items = event.items || [];
-      state.rowState = new Map(state.items.map((it) => [it.row, { status: 'Queued', detail: '' }]));
+      state.rowState = new Map(state.items.map((it) => [it.row, { status: 'Queued', detail: '', speed: 0 }]));
       state.page = 1;
       state.activeRow = null;
       state.activeFraction = 0;
-      elements.etaLabel.textContent = '';
+      state.eta = '';
       updateOverall();
       state.phase = 'downloading';
       render();
       break;
     case 'analyze_failed':
-      appendLog('ERROR', event.message);
+      appendLog('ERROR', event.message, { timestamp: event.snapshotTimestamp || Date.now() });
       state.phase = 'idle';
+      state.eta = '';
       refreshControls();
       break;
     case 'progress':
@@ -573,19 +842,41 @@ function handleBackendEvent(event) {
       state.phase = 'idle';
       state.activeRow = null;
       state.activeFraction = 0;
-      elements.etaLabel.textContent = '';
+      state.eta = '';
       render();
-      appendLog('INFO', state.cancelRequested ? 'Download cancelled.' : 'All downloads finished.');
+      appendLog('INFO', state.cancelRequested ? 'Download cancelled.' : 'All downloads finished.', {
+        timestamp: event.snapshotTimestamp || Date.now(),
+      });
       state.cancelRequested = false;
       break;
     case 'process_exit':
-      appendLog('ERROR', 'Backend process exited unexpectedly.');
+      if (state.accountStatus === 'checking') {
+        state.accountStatus = 'unknown';
+        state.accountMessage = 'Unable to verify account because the backend process stopped.';
+        appendLog('ERROR', `[ERROR] ${state.accountMessage}`);
+        renderAccount();
+      } else {
+        appendLog('ERROR', 'Backend process exited unexpectedly.');
+      }
       state.phase = 'idle';
+      state.eta = '';
       refreshControls();
       break;
     default:
       break;
   }
+  persistUIState();
+}
+
+let snapshotPending = true;
+const pendingBackendEvents = [];
+
+function handleBackendEvent(event) {
+  if (snapshotPending) {
+    pendingBackendEvents.push(event);
+    return;
+  }
+  applyBackendEvent(event);
 }
 
 /* ---- listeners ---- */
@@ -630,7 +921,7 @@ elements.startButton.addEventListener('click', () => {
   state.activeRow = null;
   state.activeFraction = 0;
   state.cancelRequested = false;
-  elements.etaLabel.textContent = '';
+  state.eta = '';
   updateOverall();
   state.phase = 'resolving';
   render();
@@ -642,14 +933,21 @@ elements.startButton.addEventListener('click', () => {
   });
 });
 
-elements.checkAccountButton.addEventListener('click', () => {
+elements.checkAccountButton.addEventListener('click', async () => {
   if (!state.cookiesFile || state.accountStatus === 'checking') return;
   state.accountStatus = 'checking';
   state.accountUsername = '';
   state.accountMessage = '';
-  appendLog('INFO', 'Checking account...');
+  appendLog('INFO', '[ACCOUNT] Checking Bilibili account...');
   renderAccount();
-  window.desktopAPI.checkAccount(state.cookiesFile);
+  try {
+    await window.desktopAPI.checkAccount(state.cookiesFile);
+  } catch (error) {
+    state.accountStatus = 'unknown';
+    state.accountMessage = error?.message || 'Unable to start account verification.';
+    appendLog('ERROR', `[ERROR] ${state.accountMessage}`);
+    renderAccount();
+  }
 });
 
 elements.pauseButton.addEventListener('click', () => {
@@ -700,6 +998,7 @@ elements.gotoInput.addEventListener('keydown', (event) => {
 });
 
 elements.clearLogButton.addEventListener('click', () => {
+  state.logs = [];
   elements.log.replaceChildren();
   appendLog('INFO', 'Log cleared');
 });
@@ -709,12 +1008,44 @@ elements.themeToggle.addEventListener('click', () => {
 });
 
 /* ---- init ---- */
-window.desktopAPI.onBackendEvent(handleBackendEvent);
-window.desktopAPI.getSettings();
-applyTheme(currentTheme());
-applySideRatio();
-render();
-updateAutoPageSize();
+let unsubscribeBackend = null;
+
+async function initialize() {
+  unsubscribeBackend = window.desktopAPI.onBackendEvent(handleBackendEvent);
+  restoreCachedUI();
+  renderSelectedPaths();
+  renderLogs();
+  applyTheme(currentTheme());
+  applySideRatio();
+  installColumnResizers();
+  render();
+  updateAutoPageSize();
+
+  try {
+    if (typeof window.desktopAPI.getState === 'function') {
+      const response = await window.desktopAPI.getState();
+      applyBackendSnapshot(response);
+      renderSelectedPaths();
+      renderLogs();
+      render();
+    }
+  } catch (error) {
+    appendLog('WARN', `Unable to restore current download state: ${error.message}`);
+  } finally {
+    snapshotPending = false;
+    const queued = pendingBackendEvents.splice(0);
+    for (const event of queued) applyBackendEvent(event);
+  }
+  window.desktopAPI.getSettings();
+}
+
+void initialize();
 
 const tableResizeObserver = new ResizeObserver(updateAutoPageSize);
 tableResizeObserver.observe(elements.tableScroll);
+
+window.addEventListener('pagehide', () => {
+  unsubscribeBackend?.();
+  unsubscribeBackend = null;
+  tableResizeObserver.disconnect();
+}, { once: true });

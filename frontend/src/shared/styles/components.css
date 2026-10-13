@@ -77,3 +77,19 @@
 
 .empty-state { display: flex; flex: 1 1 auto; align-items: center; justify-content: center; min-height: 160px; padding: 0 var(--space-4); color: var(--text-muted); font-size: var(--font-size-control); letter-spacing: var(--tracking-control); text-align: center; }
 
+.navigation-notice {
+  position: fixed;
+  z-index: 20;
+  right: var(--space-6);
+  bottom: var(--space-6);
+  max-width: 440px;
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--border-primary);
+  border-radius: var(--radius-control);
+  background: var(--bg-surface);
+  box-shadow: var(--shadow-overlay);
+  color: var(--text-primary);
+  font-size: var(--font-size-control);
+  letter-spacing: var(--tracking-control);
+}
+

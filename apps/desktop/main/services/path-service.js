@@ -25,6 +25,15 @@ class PathService {
     }
   }
 
+  resetSessionData() {
+    // These directories contain only app-owned cache/task scratch data. Keep
+    // config, logs, models, outputs, and user-selected sources untouched.
+    for (const directory of [this.cache, this.temp, this.tasks]) {
+      fs.rmSync(directory, { recursive: true, force: true });
+      fs.mkdirSync(directory, { recursive: true });
+    }
+  }
+
   taskWorkspace(taskId) {
     if (!/^[A-Za-z0-9-]+$/.test(String(taskId))) throw new TypeError('Invalid task id.');
     return path.join(this.tasks, String(taskId));

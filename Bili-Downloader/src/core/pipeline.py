@@ -23,7 +23,8 @@ class PipelineResult:
 
 
 def process(item: DownloadItem, settings: dict, opts, progress_cb, log_cb,
-            pause_event: threading.Event, cancel_event: threading.Event) -> PipelineResult:
+            pause_event: threading.Event, cancel_event: threading.Event,
+            stage_cb=None) -> PipelineResult:
     temp_dir = TEMP_DIR / item.bvid / str(item.cid)
     temp_dir.mkdir(parents=True, exist_ok=True)
     video_tmp = temp_dir / f"video.{item.video.ext}"
@@ -33,19 +34,27 @@ def process(item: DownloadItem, settings: dict, opts, progress_cb, log_cb,
         progress_cb(d)
 
     try:
+        if stage_cb:
+            stage_cb("downloading", "Video stream")
         log_cb("INFO", f"Downloading video stream {item.video.format_id}")
         download(item.video_info.url, item.video.format_id, video_tmp, opts=opts,
                  progress_cb=log_progress, pause_event=pause_event,
                  cancel_event=cancel_event, settings=settings)
         if audio_tmp:
+            if stage_cb:
+                stage_cb("downloading", "Audio stream")
             log_cb("INFO", f"Downloading audio stream {item.audio.format_id}")
             download(item.video_info.url, item.audio.format_id, audio_tmp, opts=opts,
                      progress_cb=log_progress, pause_event=pause_event,
                      cancel_event=cancel_event, settings=settings)
 
+        if stage_cb:
+            stage_cb("merging", "Muxing…")
         log_cb("INFO", "Muxing")
         mux(video_tmp, audio_tmp, item.output_path)
 
+        if stage_cb:
+            stage_cb("processing", "Verifying…")
         log_cb("INFO", "Verifying")
         probe_data = probe(item.output_path)
         expected = VerifyExpectation(
@@ -66,6 +75,8 @@ def process(item: DownloadItem, settings: dict, opts, progress_cb, log_cb,
                                   "; ".join(result.errors))
 
         if settings.get("download_subtitle", True):
+            if stage_cb:
+                stage_cb("processing", "Downloading subtitles…")
             fmt = settings.get("subtitle_format", "srt")
             download_subtitles(item.video_info, item.output_path.parent, fmt, opts=opts)
 

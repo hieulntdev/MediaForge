@@ -6,6 +6,7 @@ import urllib.request
 
 from src.extractors.base import BilibiliExtractor, ExtractOptions, ExtractorError
 from src.extractors.wbi import sign
+from src.auth.cookies import build_cookie_header, read_netscape
 from src.models.format_info import FormatInfo, format_info_from_dict
 from src.models.video_info import PageInfo, SubtitleInfo, VideoInfo
 
@@ -106,9 +107,7 @@ class BilibiliFallbackExtractor(BilibiliExtractor):
         return h
 
     def _cookie_header(self, cookies_file: str) -> str:
-        with open(cookies_file) as f:
-            cookies = [l.split("\t") for l in f if l.strip() and not l.startswith("#")]
-        return "; ".join(f"{c[5]}={c[6]}" for c in cookies if len(c) >= 7)
+        return build_cookie_header(read_netscape(cookies_file))
 
     def _parse_playurl(self, playurl: dict) -> tuple[list[FormatInfo], list[FormatInfo]]:
         dash = (playurl.get("data") or {}).get("dash") or {}

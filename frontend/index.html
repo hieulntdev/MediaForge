@@ -17,7 +17,7 @@
         <a class="brand" href="#/dashboard" aria-label="MediaForge dashboard">
           <svg class="brand-mark" viewBox="0 0 24 24" aria-hidden="true"><path d="m12 2 8.5 5v10L12 22l-8.5-5V7Z"></path><path d="m12 7 4.25 2.5v5L12 17l-4.25-2.5v-5Z"></path></svg>
           <span>MediaForge</span>
-          <span class="version">v1.0.0</span>
+          <span id="app-version" class="version"></span>
         </a>
         <label class="global-search">
           <span class="visually-hidden">Search modules</span>
@@ -83,10 +83,13 @@
                 <p id="module-view-description"></p>
               </div>
             </header>
-            <iframe id="module-frame" title="MediaForge module"></iframe>
+            <div id="module-frame-host" class="module-frame-host">
+              <iframe id="module-frame" class="module-frame" title="MediaForge module"></iframe>
+            </div>
           </section>
         </main>
       </div>
     </div>
+    <div id="navigation-notice" class="navigation-notice" role="status" aria-live="polite" hidden></div>
   </body>
 </html>

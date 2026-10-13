@@ -1,1 +1,1 @@
-"""Project setup and smoke-test commands."""
+"""Project setup and model-download commands."""

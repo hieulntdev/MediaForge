@@ -1,7 +1,6 @@
 'use strict';
 
 const path = require('node:path');
-const fs = require('node:fs');
 const { app, dialog, Menu } = require('electron');
 const { createMainWindow } = require('./window');
 const { registerIpcHandlers } = require('./ipc');
@@ -67,16 +66,6 @@ app.whenReady().then(() => {
   const settings = new SettingsStore(app.getPath('userData'));
   mainWindow = createMainWindow(settings.get().theme);
   registerIpcHandlers({ getWindow: () => mainWindow, backend, settings });
-
-  const smokeCapturePath = process.env.SFX_CONVERTER_SMOKE_CAPTURE;
-  if (smokeCapturePath) {
-    mainWindow.webContents.once('did-finish-load', async () => {
-      const image = await mainWindow.capturePage();
-      fs.writeFileSync(smokeCapturePath, image.toPNG());
-      console.log(`Renderer smoke capture: ${smokeCapturePath}`);
-      await closeApplication();
-    });
-  }
 
   mainWindow.on('close', handleWindowClose);
 

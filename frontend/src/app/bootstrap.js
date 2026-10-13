@@ -1,18 +1,90 @@
 import { applyTheme, initializeTheme, toggleTheme } from '../core/theme.js';
+import { hasActiveModuleTasks } from './navigation-state.mjs';
+import { moduleIconMarkup } from './module-icons.mjs';
 
-const state = { modules: [], filter: '', activeModule: null, health: null };
+const BILI_MODULE_ID = 'bili_downloader';
+const NAVIGATION_BLOCKED_MESSAGE = 'Downloads are in progress. Please wait until all active downloads are finished before switching modules.';
+const state = {
+  modules: [], filter: '', activeModule: null, health: null,
+  tasks: new Map(), moduleFrames: new Map(),
+};
 const elements = {
   dashboard: document.querySelector('#dashboard-view'), moduleView: document.querySelector('#module-view'),
   moduleList: document.querySelector('#module-list'), moduleEmpty: document.querySelector('#module-empty'),
   moduleNavigation: document.querySelector('#module-navigation'), moduleSearch: document.querySelector('#module-search'),
   globalSearch: document.querySelector('#global-search'), themeToggle: document.querySelector('#theme-toggle'),
   runtimeStatus: document.querySelector('#runtime-status'), clock: document.querySelector('#dashboard-clock'),
-  frame: document.querySelector('#module-frame'), backButton: document.querySelector('#back-button'),
-  moduleTitle: document.querySelector('#module-view-title'), moduleDescription: document.querySelector('#module-view-description')
+  appVersion: document.querySelector('#app-version'),
+  frameHost: document.querySelector('#module-frame-host'), frame: document.querySelector('#module-frame'),
+  backButton: document.querySelector('#back-button'),
+  moduleTitle: document.querySelector('#module-view-title'), moduleDescription: document.querySelector('#module-view-description'),
+  navigationNotice: document.querySelector('#navigation-notice')
 };
 
-function iconMarkup() {
-  return '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12h3l2-7 3 14 3-10 2 6h3"></path></svg>';
+function displayVersion(version) {
+  return String(version).replace(/\.0$/, '');
+}
+
+elements.appVersion.textContent = `v${displayVersion(window.mediaForge.appVersion)}`;
+
+function hasActiveBiliDownloads() {
+  return hasActiveModuleTasks(state.tasks, BILI_MODULE_ID);
+}
+
+let noticeTimer = null;
+function showNavigationBlockedNotice() {
+  if (!elements.navigationNotice.hidden) return;
+  elements.navigationNotice.textContent = NAVIGATION_BLOCKED_MESSAGE;
+  elements.navigationNotice.hidden = false;
+  clearTimeout(noticeTimer);
+  noticeTimer = setTimeout(() => { elements.navigationNotice.hidden = true; }, 4000);
+}
+
+function updateNavigationLock() {
+  const locked = state.activeModule?.id === BILI_MODULE_ID && hasActiveBiliDownloads();
+  elements.backButton.disabled = locked;
+  const dashboardLink = document.querySelector('[data-route="dashboard"]');
+  dashboardLink.setAttribute('aria-disabled', String(locked));
+  for (const link of elements.moduleNavigation.querySelectorAll('.nav-item')) {
+    const disabled = locked && link.dataset.module !== BILI_MODULE_ID;
+    link.setAttribute('aria-disabled', String(disabled));
+  }
+}
+
+async function refreshTasks() {
+  const tasks = await window.mediaForge.listTasks();
+  state.tasks = new Map(tasks.map((task) => [task.id, task]));
+  updateNavigationLock();
+}
+
+function restoreActiveHash() {
+  const hash = state.activeModule
+    ? `#/modules/${state.activeModule.frontendRoute}`
+    : '#/dashboard';
+  history.replaceState(null, '', hash);
+}
+
+async function navigationIsBlocked(targetModuleId = null) {
+  if (state.activeModule?.id !== BILI_MODULE_ID || targetModuleId === BILI_MODULE_ID) return false;
+  try {
+    await refreshTasks();
+  } catch {
+    // Fail closed while leaving Bili: an unavailable snapshot must not be
+    // interpreted as proof that its background work has finished.
+    showNavigationBlockedNotice();
+    return true;
+  }
+  if (!hasActiveBiliDownloads()) return false;
+  showNavigationBlockedNotice();
+  return true;
+}
+
+function updateFrameThemes() {
+  const theme = document.documentElement.dataset.theme === 'dark' ? 'dark' : 'light';
+  for (const frame of state.moduleFrames.values()) {
+    const frameRoot = frame.contentDocument?.documentElement;
+    if (frameRoot) frameRoot.dataset.theme = theme;
+  }
 }
 
 function updateThemeButton() {
@@ -20,8 +92,21 @@ function updateThemeButton() {
   const label = dark ? 'Switch to light mode' : 'Switch to dark mode';
   elements.themeToggle.setAttribute('aria-label', label);
   elements.themeToggle.title = label;
-  const frameRoot = elements.frame.contentDocument?.documentElement;
-  if (frameRoot) frameRoot.dataset.theme = dark ? 'dark' : 'light';
+  updateFrameThemes();
+}
+
+function frameFor(module) {
+  if (state.moduleFrames.has(module.id)) return state.moduleFrames.get(module.id);
+  const frame = state.moduleFrames.size === 0
+    ? elements.frame
+    : document.createElement('iframe');
+  frame.id = `module-frame-${module.id}`;
+  frame.className = 'module-frame';
+  frame.title = `${module.displayName} module`;
+  frame.hidden = true;
+  if (state.moduleFrames.size !== 0) elements.frameHost.append(frame);
+  state.moduleFrames.set(module.id, frame);
+  return frame;
 }
 
 function moduleRow(module) {
@@ -33,7 +118,7 @@ function moduleRow(module) {
   const icon = document.createElement('div');
   icon.className = 'module-icon';
   icon.dataset.accent = module.accent;
-  icon.innerHTML = iconMarkup();
+  icon.innerHTML = moduleIconMarkup(module.id);
   const copy = document.createElement('div');
   copy.className = 'module-copy';
   const title = document.createElement('h3'); title.textContent = module.displayName;
@@ -45,7 +130,7 @@ function moduleRow(module) {
   const versionValue = document.createElement('strong'); versionValue.textContent = `v${module.version}`; version.append(versionValue);
   const actions = document.createElement('div'); actions.className = 'module-actions';
   const open = document.createElement('button'); open.type = 'button'; open.className = 'button button-secondary'; open.textContent = 'Open';
-  open.addEventListener('click', () => openModule(module));
+  open.addEventListener('click', () => { void openModule(module); });
   actions.append(open); row.append(identity, runtime, version, actions);
   return row;
 }
@@ -61,8 +146,8 @@ function renderNavigation() {
   elements.moduleNavigation.replaceChildren();
   for (const module of state.modules) {
     const link = document.createElement('a'); link.className = 'nav-item'; link.href = `#/modules/${module.frontendRoute}`; link.dataset.module = module.id;
-    link.innerHTML = `${iconMarkup()}<span></span>`; link.querySelector('span').textContent = module.displayName;
-    link.addEventListener('click', (event) => { event.preventDefault(); openModule(module); });
+    link.innerHTML = `${moduleIconMarkup(module.id)}<span></span>`; link.querySelector('span').textContent = module.displayName;
+    link.addEventListener('click', (event) => { event.preventDefault(); void openModule(module); });
     elements.moduleNavigation.append(link);
   }
 }
@@ -73,25 +158,35 @@ function setNavigation(moduleId = null) {
 }
 
 async function openModule(module) {
+  if (state.activeModule?.id === module.id) return true;
+  if (await navigationIsBlocked(module.id)) { restoreActiveHash(); return false; }
   state.activeModule = module;
   elements.dashboard.hidden = true;
   elements.moduleView.hidden = false;
   elements.moduleTitle.textContent = module.displayName;
   elements.moduleDescription.textContent = module.description;
-  elements.frame.title = `${module.displayName} module`;
-  elements.frame.srcdoc = await window.mediaForge.loadModuleView(module.id);
-  elements.frame.addEventListener('load', updateThemeButton, { once: true });
+  for (const frame of state.moduleFrames.values()) frame.hidden = true;
+  const frame = frameFor(module);
+  frame.hidden = false;
+  if (!frame.hasAttribute('srcdoc')) {
+    frame.srcdoc = await window.mediaForge.loadModuleView(module.id);
+    frame.addEventListener('load', updateThemeButton, { once: true });
+  }
   setNavigation(module.id);
   history.replaceState(null, '', `#/modules/${module.frontendRoute}`);
+  updateNavigationLock();
+  return true;
 }
 
-function showDashboard() {
+async function showDashboard() {
+  if (await navigationIsBlocked(null)) { restoreActiveHash(); return false; }
   state.activeModule = null;
-  elements.frame.removeAttribute('srcdoc');
   elements.moduleView.hidden = true;
   elements.dashboard.hidden = false;
   setNavigation();
   history.replaceState(null, '', '#/dashboard');
+  updateNavigationLock();
+  return true;
 }
 
 function updateClock() {
@@ -116,24 +211,43 @@ async function loadHealth() {
 
 initializeTheme(); updateThemeButton(); updateClock(); setInterval(updateClock, 1000);
 elements.themeToggle.addEventListener('click', () => { toggleTheme(); updateThemeButton(); });
-elements.backButton.addEventListener('click', showDashboard);
-document.querySelector('[data-route="dashboard"]').addEventListener('click', (event) => { event.preventDefault(); showDashboard(); });
+elements.backButton.addEventListener('click', () => { void showDashboard(); });
+document.querySelector('[data-route="dashboard"]').addEventListener('click', (event) => { event.preventDefault(); void showDashboard(); });
+document.querySelector('.brand').addEventListener('click', (event) => { event.preventDefault(); void showDashboard(); });
 for (const input of [elements.moduleSearch, elements.globalSearch]) {
   input.addEventListener('input', () => {
     state.filter = input.value;
     elements.moduleSearch.value = state.filter;
     elements.globalSearch.value = state.filter;
-    if (state.activeModule) showDashboard();
+    if (state.activeModule) void showDashboard();
     renderModules();
   });
 }
 
-try {
-  state.modules = await window.mediaForge.listModules();
-  renderNavigation(); renderModules();
+window.mediaForge.onTaskEvent((event) => {
+  const task = event?.payload?.task;
+  if (!task?.id) return;
+  state.tasks.set(task.id, task);
+  updateNavigationLock();
+});
+
+window.addEventListener('hashchange', () => {
   const route = location.hash.match(/^#\/modules\/(.+)$/)?.[1];
   const module = state.modules.find((item) => item.frontendRoute === route);
-  if (module) await openModule(module); else showDashboard();
+  if (module) void openModule(module);
+  else void showDashboard();
+});
+
+try {
+  state.modules = await window.mediaForge.listModules();
+  await refreshTasks();
+  renderNavigation(); renderModules();
+  const route = location.hash.match(/^#\/modules\/(.+)$/)?.[1];
+  const activeBiliModule = hasActiveBiliDownloads()
+    ? state.modules.find((item) => item.id === BILI_MODULE_ID)
+    : null;
+  const module = activeBiliModule || state.modules.find((item) => item.frontendRoute === route);
+  if (module) await openModule(module); else await showDashboard();
   void loadHealth();
 } catch (error) {
   elements.moduleList.replaceChildren();

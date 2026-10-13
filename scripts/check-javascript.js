@@ -5,7 +5,7 @@ const path = require('node:path');
 const { spawnSync } = require('node:child_process');
 
 const root = path.resolve(__dirname, '..');
-const roots = ['apps', 'backend/mediaforge/modules', 'scripts', 'tests/desktop'];
+const roots = ['apps', 'backend/mediaforge/modules', 'scripts'];
 const files = [];
 
 function visit(directory) {

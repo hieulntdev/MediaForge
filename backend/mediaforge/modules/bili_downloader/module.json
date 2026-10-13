@@ -7,7 +7,7 @@
   "frontendRoute": "bili-downloader",
   "runtime": "base",
   "resourceClass": "medium",
-  "actions": ["check_account", "get_settings", "set_settings", "analyze", "download", "pause", "resume", "cancel"],
+  "actions": ["check_account", "get_settings", "set_settings", "get_state", "analyze", "download", "pause", "resume", "cancel"],
   "capabilities": { "cancel": true, "pause": true },
   "inputs": ["url", "file.link-list"],
   "outputs": ["media.video", "subtitle.srt"],

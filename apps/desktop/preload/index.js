@@ -11,6 +11,8 @@ const CHANNELS = Object.freeze({
 
 const initialThemeArgument = process.argv.find((value) => value.startsWith('--mediaforge-theme='));
 const initialTheme = initialThemeArgument?.endsWith('dark') ? 'dark' : 'light';
+const appVersionArgument = process.argv.find((value) => value.startsWith('--mediaforge-version='));
+const appVersion = appVersionArgument?.slice('--mediaforge-version='.length) || 'unknown';
 const execute = (module, action, payload = {}) => ipcRenderer.invoke(CHANNELS.MODULE_EXECUTE, { module, action, payload });
 const subscribe = (channel, callback, module = null) => {
   if (typeof callback !== 'function') throw new TypeError('Event callback must be a function.');
@@ -24,6 +26,7 @@ const subscribe = (channel, callback, module = null) => {
 
 contextBridge.exposeInMainWorld('mediaForge', Object.freeze({
   initialTheme,
+  appVersion,
   listModules: () => ipcRenderer.invoke(CHANNELS.MODULES_LIST),
   loadModuleView: (moduleId) => ipcRenderer.invoke(CHANNELS.MODULE_VIEW, moduleId),
   execute,
@@ -69,6 +72,7 @@ contextBridge.exposeInMainWorld('biliAPI', Object.freeze({
   checkAccount: (cookiesFile) => execute('bili_downloader', 'check_account', { cookies_file: cookiesFile }),
   getSettings: () => execute('bili_downloader', 'get_settings'),
   saveSettings: (settings) => execute('bili_downloader', 'set_settings', { settings }),
+  getState: () => execute('bili_downloader', 'get_state'),
   onBackendEvent: (callback) => subscribe(CHANNELS.MODULE_EVENT, callback, 'bili_downloader')
 }));
 

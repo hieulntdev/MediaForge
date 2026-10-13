@@ -3,11 +3,13 @@ const { spawn } = require('node:child_process');
 const fs = require('node:fs');
 const path = require('node:path');
 const readline = require('node:readline');
+const DownloadState = require('./download-state');
 
 const EVENT_PREFIX = 'BILI_EVENT ';
 
 let mainWindow = null;
 let worker = null;
+const downloadSnapshot = DownloadState.createSnapshot();
 
 function pythonExecutable() {
   if (process.env.BILI_PYTHON) return process.env.BILI_PYTHON;
@@ -21,8 +23,9 @@ function backendEntry() {
 }
 
 function sendEvent(event) {
+  const versionedEvent = DownloadState.snapshotWithEvent(downloadSnapshot, event);
   if (mainWindow && !mainWindow.isDestroyed()) {
-    mainWindow.webContents.send('backend:event', event);
+    mainWindow.webContents.send('backend:event', versionedEvent);
   }
 }
 
@@ -147,8 +150,18 @@ ipcMain.handle('shell:open-folder', async (_event, outputPath) => {
 });
 
 ipcMain.on('backend:command', (_event, command) => {
+  if (command?.command === 'analyze') DownloadState.begin(downloadSnapshot, command);
+  else if (command?.command === 'download') DownloadState.begin(downloadSnapshot, {}, { retry: true });
+  else if (['pause', 'resume', 'cancel'].includes(command?.command)) {
+    DownloadState.setControlState(downloadSnapshot, command.command);
+  }
   sendCommand(command);
 });
+
+ipcMain.handle('backend:get-state', () => ({
+  snapshot: DownloadState.clone(downloadSnapshot),
+  task: null,
+}));
 
 app.whenReady().then(() => {
   startBackend();

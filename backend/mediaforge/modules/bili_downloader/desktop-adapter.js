@@ -4,6 +4,7 @@ const { EventEmitter } = require('node:events');
 const path = require('node:path');
 const { pathToFileURL } = require('node:url');
 const { parseProtocolLine, redactSecrets, TERMINAL_STATES } = require('../../../../apps/desktop/shared/protocol');
+const DownloadState = require('../../../../Bili-Downloader/electron-app/download-state');
 
 class BiliAdapter extends EventEmitter {
   constructor(context) {
@@ -14,6 +15,7 @@ class BiliAdapter extends EventEmitter {
     this.cancelRequested = false;
     this.items = [];
     this.completedRows = new Set();
+    this.snapshot = DownloadState.createSnapshot();
   }
 
   ensureWorker() {
@@ -36,7 +38,10 @@ class BiliAdapter extends EventEmitter {
     this.worker.on('exit', ({ code, signal, intentional }) => {
       if (!intentional) this.failActive('BACKEND_EXITED', `Bili backend stopped (${signal || `exit ${code}`}).`);
       this.worker = null;
-      this.emit('event', { type: 'process_exit', code, signal });
+      this.emit('event', DownloadState.snapshotWithEvent(
+        this.snapshot,
+        { type: 'process_exit', code, signal },
+      ));
     });
     return this.worker;
   }
@@ -46,6 +51,7 @@ class BiliAdapter extends EventEmitter {
       check_account: 'check_account', get_settings: 'get_settings', set_settings: 'save_settings',
       analyze: 'analyze', download: 'analyze', pause: 'pause', resume: 'resume', cancel: 'cancel'
     };
+    if (action === 'get_state') return this.getState();
     if (['pause', 'resume', 'cancel'].includes(action)) return this[action](this.activeTaskId);
     const worker = this.ensureWorker();
     if (['check_account', 'get_settings', 'set_settings'].includes(action)) {
@@ -63,6 +69,7 @@ class BiliAdapter extends EventEmitter {
     });
     this.activeTaskId = task.id;
     this.cancelRequested = false;
+    DownloadState.begin(this.snapshot, payload, { retry: Boolean(retryIndices) });
     if (!retryIndices) this.items = [];
     this.completedRows.clear();
     this.taskManager.transition(task.id, 'RUNNING', { stage: retryIndices ? 'downloading' : 'analyzing' });
@@ -78,7 +85,9 @@ class BiliAdapter extends EventEmitter {
       ? parsed.payload
       : { type: 'log', level: 'INFO', message: parsed.message };
     if (raw.type === 'log') raw.message = redactSecrets(raw.message);
-    this.emit('event', raw);
+    const event = DownloadState.snapshotWithEvent(this.snapshot, raw);
+    this.items = this.snapshot.items;
+    this.emit('event', event);
     const taskId = this.activeTaskId;
     if (!taskId) return;
     const task = this.taskManager.get(taskId);
@@ -124,6 +133,7 @@ class BiliAdapter extends EventEmitter {
     this.ensureWorker().send({ command: 'pause' });
     const task = this.taskManager.get(taskId);
     if (task.state === 'RUNNING') this.taskManager.transition(taskId, 'PAUSED', { stage: task.stage });
+    DownloadState.setControlState(this.snapshot, 'pause');
     return { paused: true };
   }
 
@@ -132,6 +142,7 @@ class BiliAdapter extends EventEmitter {
     this.ensureWorker().send({ command: 'resume' });
     const task = this.taskManager.get(taskId);
     if (task.state === 'PAUSED') this.taskManager.transition(taskId, 'RUNNING', { stage: task.stage });
+    DownloadState.setControlState(this.snapshot, 'resume');
     return { resumed: true };
   }
 
@@ -140,6 +151,7 @@ class BiliAdapter extends EventEmitter {
     this.cancelRequested = true;
     const task = this.taskManager.get(taskId);
     if (['RUNNING', 'PAUSED'].includes(task.state)) this.taskManager.transition(taskId, 'CANCELLING', { stage: task.stage });
+    DownloadState.setControlState(this.snapshot, 'cancel');
     this.ensureWorker().send({ command: 'cancel' });
     return { cancelled: true };
   }
@@ -148,6 +160,18 @@ class BiliAdapter extends EventEmitter {
     if (!this.activeTaskId) return;
     const task = this.taskManager.get(this.activeTaskId);
     if (!TERMINAL_STATES.has(task.state)) this.taskManager.transition(task.id, 'FAILED', { error: { code, message, retryable: true } });
+  }
+
+  getState() {
+    let task = null;
+    if (this.activeTaskId) {
+      try {
+        task = structuredClone(this.taskManager.get(this.activeTaskId));
+      } catch {
+        task = null;
+      }
+    }
+    return { snapshot: DownloadState.clone(this.snapshot), task };
   }
 
   shutdown() { return this.worker?.terminate(); }

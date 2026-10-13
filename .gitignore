@@ -11,6 +11,8 @@ Desktop.ini
 *.tmp
 *.temp
 *~
+.cache/
+.eslintcache
 
 # Local configuration and secrets
 .env
@@ -60,4 +62,8 @@ model_weights/
 *.zsp
 .zsp.retry/
 *.log
+*.pid
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
 *.part

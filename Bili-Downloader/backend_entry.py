@@ -8,7 +8,9 @@ Reads newline-delimited JSON commands on stdin and writes newline-delimited
 from __future__ import annotations
 
 import json
+import math
 import threading
+import time
 from pathlib import Path
 
 from src.auth.account import AccountInfo, check_account
@@ -53,14 +55,7 @@ def _normalize_container(value: str) -> str:
 
 
 def _account_status(info: AccountInfo) -> str:
-    message = (info.message or "").lower()
-    if "expired" in message:
-        return "expired"
-    if "failed" in message:
-        return "error"
-    if info.logged_in:
-        return "valid"
-    return "invalid"
+    return info.status.value
 
 
 def _fmt_date(raw: str) -> str:
@@ -92,6 +87,7 @@ _state = {
     "pause_event": threading.Event(),
     "cancel_event": threading.Event(),
     "dl_thread": None,
+    "speed_samples": {},
 }
 
 
@@ -101,8 +97,14 @@ def _run_check_account(cmd: dict) -> None:
         _state["cookies_file"] = cookies_file
         _state["opts"] = ExtractOptions(cookies_file=cookies_file)
     info = check_account(cookies_file or None)
-    emit("account", status=_account_status(info),
-         username=info.username or "", message=info.message)
+    emit(
+        "account",
+        status=_account_status(info),
+        username=info.username or "",
+        message=info.message,
+        http_status=info.http_status,
+        api_code=info.api_code,
+    )
 
 
 def _run_analyze(cmd: dict) -> None:
@@ -156,17 +158,52 @@ def _run_analyze(cmd: dict) -> None:
         _start_download(None)
 
 
+def _nonnegative_number(value) -> float:
+    try:
+        result = float(value)
+    except (TypeError, ValueError):
+        return 0.0
+    return result if math.isfinite(result) and result >= 0 else 0.0
+
+
+def _speed_for_progress(row: int, data: dict, now: float | None = None) -> float:
+    """Return network bytes/second, preferring yt-dlp's measured value."""
+    received = _nonnegative_number(data.get("downloaded_bytes"))
+    timestamp = time.monotonic() if now is None else now
+    native = data.get("speed")
+    previous = _state["speed_samples"].get(row)
+    speed = 0.0
+    try:
+        native_value = float(native)
+    except (TypeError, ValueError):
+        native_value = math.nan
+    if math.isfinite(native_value) and native_value >= 0:
+        speed = native_value
+    elif previous is not None:
+        previous_received, previous_time, previous_speed = previous
+        elapsed = timestamp - previous_time
+        if received >= previous_received and elapsed > 0:
+            measured = (received - previous_received) / elapsed
+            if math.isfinite(measured) and measured >= 0:
+                speed = measured if previous_speed <= 0 else (previous_speed * 0.65 + measured * 0.35)
+    _state["speed_samples"][row] = (received, timestamp, speed)
+    return speed
+
+
 def _progress(row: int, d: dict) -> None:
     status = d.get("status")
     if status == "downloading":
-        total = d.get("total_bytes") or d.get("total_bytes_estimate") or 0
-        received = d.get("downloaded_bytes") or 0
-        fraction = (received / total) if total else 0.0
+        total = _nonnegative_number(d.get("total_bytes") or d.get("total_bytes_estimate"))
+        received = _nonnegative_number(d.get("downloaded_bytes"))
+        fraction = min(1.0, received / total) if total else 0.0
+        speed = _speed_for_progress(row, d)
         emit("progress", row=row, status="downloading", received=received,
-             total=total, fraction=fraction, eta=d.get("_eta_str") or "")
+             total=total, fraction=fraction, eta=d.get("_eta_str") or "",
+             speed=speed)
     elif status == "finished":
+        _state["speed_samples"].pop(row, None)
         emit("progress", row=row, status="finished", received=0, total=0,
-             fraction=1.0, eta="")
+             fraction=1.0, eta="", speed=0)
 
 
 def _download_loop(indices: list[int] | None) -> None:
@@ -180,6 +217,7 @@ def _download_loop(indices: list[int] | None) -> None:
             if _state["cancel_event"].is_set():
                 break
             item = items[row]
+            _state["speed_samples"].pop(row, None)
             emit("row_update", row=row, status="Downloading", detail="")
             result = process(
                 item, settings, opts,
@@ -187,6 +225,12 @@ def _download_loop(indices: list[int] | None) -> None:
                 log_cb=lambda lvl, msg: emit("log", level=lvl, message=mask_secrets(msg)),
                 pause_event=_state["pause_event"],
                 cancel_event=_state["cancel_event"],
+                stage_cb=lambda stage, detail, r=row: emit(
+                    "row_update",
+                    row=r,
+                    status="Downloading" if stage == "downloading" else "Processing",
+                    detail=detail,
+                ),
             )
             if result.status == "SUCCESS":
                 emit("row_update", row=row, status="Done", detail="")
@@ -199,6 +243,7 @@ def _download_loop(indices: list[int] | None) -> None:
     except Exception as e:  # noqa: BLE001
         emit("log", level="ERROR", message=mask_secrets(str(e)))
     finally:
+        _state["speed_samples"].clear()
         emit("download_done")
 
 

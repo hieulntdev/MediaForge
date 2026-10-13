@@ -23,6 +23,7 @@ contextBridge.exposeInMainWorld('desktopAPI', {
   saveSettings: (settings) => ipcRenderer.send('backend:command', {
     command: 'save_settings', settings,
   }),
+  getState: () => ipcRenderer.invoke('backend:get-state'),
 
   onBackendEvent: (callback) => {
     const listener = (_event, payload) => callback(payload);

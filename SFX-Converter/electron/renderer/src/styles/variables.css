@@ -28,31 +28,31 @@
 
   --font-sans: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
   --font-size-caption: 12px;
-  --font-size-control: 14px;
-  --font-size-body: 17px;
-  --font-size-title: 21px;
+  --font-size-control: 13px;
+  --font-size-body: 15px;
+  --font-size-title: 19px;
   --tracking-caption: -0.264px;
   --tracking-control: -0.224px;
   --tracking-body: -0.272px;
   --tracking-title: -0.105px;
 
   --space-1: 4px;
-  --space-2: 8px;
-  --space-3: 12px;
-  --space-4: 16px;
-  --space-5: 20px;
-  --space-6: 24px;
-  --space-10: 40px;
+  --space-2: 7px;
+  --space-3: 11px;
+  --space-4: 14px;
+  --space-5: 18px;
+  --space-6: 22px;
+  --space-10: 36px;
 
   --radius-control: 8px;
   --radius-panel: 8px;
   --radius-pill: 980px;
 
-  --height-control: 44px;
-  --height-button: 36px;
-  --height-button-micro: 28px;
-  --size-icon-button: 36px;
-  --height-progress: 8px;
+  --height-control: 40px;
+  --height-button: 32px;
+  --height-button-micro: 25px;
+  --size-icon-button: 32px;
+  --height-progress: 7px;
   --duration-interaction: 150ms;
 }
 

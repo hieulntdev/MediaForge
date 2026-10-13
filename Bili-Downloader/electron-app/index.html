@@ -17,35 +17,6 @@
   <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
-  <header class="app-header">
-    <svg class="app-icon" viewBox="0 0 24 24" width="22" height="22" aria-hidden="true">
-      <rect x="2.5" y="4.5" width="19" height="15" rx="4" fill="none" stroke="currentColor" stroke-width="1.8" />
-      <path d="m8.5 2.5 3.5 3 3.5-3M9.5 9l6 3-6 3z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" />
-    </svg>
-    <div class="app-titles">
-      <h1>Bilibili Video Downloader</h1>
-      <p class="subtitle">Download Bilibili videos in high quality, fast and easy.</p>
-    </div>
-    <div class="header-actions">
-      <span id="account-status" class="account-status" data-status="none" role="status" aria-live="polite">No Cookies</span>
-      <button id="check-account-button" type="button" class="button button-secondary" disabled>
-        <span class="button-icon button-icon-check" aria-hidden="true">
-          <svg viewBox="0 0 24 24"><path d="m5 12 4 4L19 6" /></svg>
-        </span>
-        <span class="button-label">Check Account</span>
-      </button>
-      <button id="theme-toggle" type="button" class="icon-button" aria-label="Switch to dark mode" title="Switch to dark mode">
-        <svg class="theme-icon theme-icon-sun" viewBox="0 0 24 24" aria-hidden="true">
-          <circle cx="12" cy="12" r="3.5" />
-          <path d="M12 2v2M12 20v2M4.93 4.93l1.42 1.42M17.65 17.65l1.42 1.42M2 12h2M20 12h2M4.93 19.07l1.42-1.42M17.65 6.35l1.42-1.42" />
-        </svg>
-        <svg class="theme-icon theme-icon-moon" viewBox="0 0 24 24" aria-hidden="true">
-          <path d="M20.5 15.2A8.5 8.5 0 0 1 8.8 3.5a8.5 8.5 0 1 0 11.7 11.7Z" />
-        </svg>
-      </button>
-    </div>
-  </header>
-
   <section class="setup-grid" aria-label="Download setup">
     <div class="field-group">
       <span class="field-label">Link List File</span>
@@ -77,6 +48,12 @@
       </button>
     </div>
     <div class="primary-action-group">
+      <button id="check-account-button" type="button" class="button button-secondary button-large" disabled>
+        <span class="button-icon button-icon-check" aria-hidden="true">
+          <svg viewBox="0 0 24 24"><path d="m5 12 4 4L19 6" /></svg>
+        </span>
+        <span class="button-label">Check Account</span>
+      </button>
       <button id="start-button" type="button" class="button button-primary button-large" disabled>
         <span class="button-icon" aria-hidden="true">
           <svg viewBox="0 0 24 24"><path class="fill-icon" d="m9 6 9 6-9 6z" /></svg>
@@ -123,11 +100,12 @@
         <table class="download-table">
           <thead>
             <tr>
-              <th class="col-id" scope="col">ID</th>
-              <th class="col-link" scope="col">Link</th>
-              <th class="col-detail" scope="col">Detail</th>
-              <th class="col-status" scope="col">Status</th>
-              <th class="col-action" scope="col">Actions</th>
+              <th class="col-id" data-column="id" scope="col"><span>ID</span></th>
+              <th class="col-link" data-column="link" scope="col"><span>Link</span></th>
+              <th class="col-detail" data-column="detail" scope="col"><span>Detail</span></th>
+              <th class="col-status" data-column="status" scope="col"><span>Status</span></th>
+              <th class="col-speed" data-column="speed" scope="col"><span>Speed</span></th>
+              <th class="col-action" data-column="action" scope="col"><span>Actions</span></th>
             </tr>
           </thead>
           <tbody id="table-body"></tbody>
@@ -171,6 +149,10 @@
     </aside>
   </main>
 
+  <button id="theme-toggle" type="button" hidden aria-label="Switch to dark mode"></button>
+
+  <script src="account-status.js"></script>
+  <script src="download-state.js"></script>
   <script src="renderer.js"></script>
 </body>
 </html>

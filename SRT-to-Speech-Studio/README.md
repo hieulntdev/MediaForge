@@ -30,9 +30,8 @@ SRT-to-Speech-Studio/
 │       ├── hardware.py       # runtime plan cho VieNeu
 │       ├── vieneu_engine.py  # adapter VieNeu-TTS
 │       └── melotts_engine.py # adapter MeloTTS
-├── electron-app/             # main/preload/renderer và UI tests
-├── scripts/                  # patch tương thích MeCab khi setup MeloTTS
-└── tests/                    # backend tests
+├── electron-app/             # main/preload/renderer
+└── scripts/                  # patch tương thích MeCab khi setup MeloTTS
 ```
 
 `.venv/`, `.venv-melotts/`, `node_modules/`, `__pycache__/` và `.DS_Store` là
@@ -204,16 +203,17 @@ Chạy lại `./studio.sh setup melotts`; không sửa tay MeCab hoặc trộn p
 
 ## Development Notes
 
-Chạy test và chẩn đoán:
+Chạy kiểm tra cú pháp và chẩn đoán trực tiếp:
 
 ```sh
-.venv/bin/python3 -m unittest discover -s tests -v
 .venv/bin/python3 -m studio.tts.hardware
 
 cd electron-app
 npm run check
-npm test
 ```
+
+Sau đó chạy `./studio.sh run` và kiểm tra chọn file, tổng hợp, retry, phát audio
+và lưu project trực tiếp trong Electron.
 
 Các contract cần giữ khi phát triển:
 

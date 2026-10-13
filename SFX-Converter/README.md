@@ -112,29 +112,16 @@ Workflow:
 
 Các giá trị, hash và revision được pin trong `app/settings.py`.
 
-## Test và quality checks
-
-```bash
-npm test
-```
-
-Lệnh này kiểm tra cú pháp toàn bộ JavaScript, Node unit tests, tương tác các nút
-trong Electron renderer, Python backend protocol tests và bộ test business logic
-hiện có. Có thể chạy từng phần:
+## Kiểm tra trực tiếp
 
 ```bash
 npm run lint:syntax
-npm run test:node
-npm run test:electron
-.venv/bin/python -m pytest
 .venv/bin/ruff check .
+npm start
 ```
 
-Smoke test không qua UI vẫn dùng đúng service/model:
-
-```bash
-.venv/bin/python -m scripts.test_sfx_extraction input.mp4 output.wav
-```
+Sau khi mở ứng dụng, kiểm tra chọn video, thư mục output, trạng thái model,
+start/cancel và file WAV xuất ra trực tiếp trong Electron.
 
 ## Cấu trúc project
 
@@ -144,15 +131,13 @@ electron/
   preload/       contextBridge API whitelist
   renderer/      HTML, CSS và UI state
   shared/        tên IPC channel dùng chung
-  tests/         Node tests
 app/
   backend.py     JSON-lines adapter cho Electron
   settings.py    cấu hình model/path
   models/        model manager và SFC-Locoformer adapter
   services/      pipeline nghiệp vụ audio/video/export
   utils/         FFmpeg, logging và path helpers
-scripts/         setup, tải model và smoke test
-tests/           Python unit tests
+scripts/         setup và tải model
 ```
 
 ## Xử lý sự cố

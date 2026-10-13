@@ -4,9 +4,9 @@ const path = require('node:path');
 const { BrowserWindow, screen } = require('electron');
 const { createWindowOptions } = require('./window-options');
 
-function createMainWindow(theme) {
+function createMainWindow(theme, appVersion) {
   const display = screen.getPrimaryDisplay();
-  const window = new BrowserWindow(createWindowOptions(theme, display.workArea));
+  const window = new BrowserWindow(createWindowOptions(theme, display.workArea, appVersion));
   window.loadFile(path.join(__dirname, '..', '..', '..', 'frontend', 'index.html'));
   window.once('ready-to-show', () => window.show());
   window.webContents.setWindowOpenHandler(() => ({ action: 'deny' }));

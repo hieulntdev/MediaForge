@@ -32,7 +32,7 @@ function initialWindowBounds(workArea) {
   };
 }
 
-function createWindowOptions(theme = 'light', workArea = null) {
+function createWindowOptions(theme = 'light', workArea = null, appVersion = 'unknown') {
   const bounds = workArea
     ? initialWindowBounds(workArea)
     : { width: WINDOW_METRICS.defaultWidth, height: WINDOW_METRICS.defaultHeight };
@@ -53,7 +53,10 @@ function createWindowOptions(theme = 'light', workArea = null) {
       contextIsolation: true,
       nodeIntegration: false,
       sandbox: true,
-      additionalArguments: [`--mediaforge-theme=${theme === 'dark' ? 'dark' : 'light'}`]
+      additionalArguments: [
+        `--mediaforge-theme=${theme === 'dark' ? 'dark' : 'light'}`,
+        `--mediaforge-version=${appVersion}`
+      ]
     }
   };
 }

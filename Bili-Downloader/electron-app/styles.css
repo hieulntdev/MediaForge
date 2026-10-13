@@ -35,36 +35,36 @@
   --font-mono: "SF Mono", ui-monospace, "Cascadia Code", Consolas,
     "Courier New", monospace;
   --font-size-caption: 12px;
-  --font-size-control: 14px;
-  --font-size-body: 17px;
-  --font-size-title: 21px;
-  --font-size-heading-sm: 28px;
+  --font-size-control: 13px;
+  --font-size-body: 15px;
+  --font-size-title: 19px;
+  --font-size-heading-sm: 25px;
   --tracking-caption: -0.264px;
   --tracking-control: -0.224px;
   --tracking-body: -0.272px;
   --tracking-title: -0.105px;
 
   --space-1: 4px;
-  --space-2: 8px;
-  --space-3: 12px;
-  --space-4: 16px;
-  --space-5: 20px;
-  --space-6: 24px;
-  --space-10: 40px;
-  --space-12: 48px;
-  --space-14: 56px;
+  --space-2: 7px;
+  --space-3: 11px;
+  --space-4: 14px;
+  --space-5: 18px;
+  --space-6: 22px;
+  --space-10: 36px;
+  --space-12: 43px;
+  --space-14: 50px;
 
   --radius-control: 8px;
   --radius-panel: 8px;
   --radius-pill: 980px;
 
-  --height-control: 44px;
-  --height-button: 36px;
-  --height-compact: 32px;
-  --height-button-micro: 28px;
-  --size-icon-button: 36px;
-  --height-table-row: 36px;
-  --height-progress: 8px;
+  --height-control: 40px;
+  --height-button: 32px;
+  --height-compact: 29px;
+  --height-button-micro: 25px;
+  --size-icon-button: 32px;
+  --height-table-row: 32px;
+  --height-progress: 7px;
   --duration-interaction: 150ms;
 
   --shadow-overlay: 0 8px 24px rgba(0, 0, 0, 0.12);
@@ -226,12 +226,17 @@ svg {
   color: var(--status-success);
 }
 
-.account-status[data-status="expired"] {
+.account-status[data-status="expired"],
+.account-status[data-status="network_error"],
+.account-status[data-status="timeout"],
+.account-status[data-status="rate_limited"],
+.account-status[data-status="server_error"],
+.account-status[data-status="unknown"] {
   color: var(--status-warning);
 }
 
 .account-status[data-status="invalid"],
-.account-status[data-status="error"] {
+.account-status[data-status="file_error"] {
   color: var(--status-danger);
 }
 
@@ -367,6 +372,7 @@ svg {
 .primary-action-group {
   display: flex;
   align-items: center;
+  gap: var(--space-3);
 }
 
 .button {
@@ -669,6 +675,7 @@ svg {
   min-width: 0;
   min-height: 0;
   overflow: auto;
+  scrollbar-gutter: stable;
   border: 1px solid var(--border-primary);
   border-radius: var(--radius-control);
   background: var(--bg-surface);
@@ -676,8 +683,8 @@ svg {
 
 .download-table {
   flex: 0 0 auto;
-  width: 100%;
-  min-width: 760px;
+  width: var(--download-table-width, 1034px);
+  min-width: 100%;
   table-layout: fixed;
   border-collapse: collapse;
 }
@@ -705,6 +712,49 @@ svg {
   letter-spacing: var(--tracking-caption);
 }
 
+.download-table th > span:first-child {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.column-resizer {
+  position: absolute;
+  z-index: 3;
+  top: 0;
+  right: 0;
+  width: 16px;
+  height: 100%;
+  cursor: col-resize;
+  touch-action: none;
+  user-select: none;
+}
+
+.column-resizer::after {
+  position: absolute;
+  top: 0;
+  right: 7px;
+  width: 1px;
+  height: 100%;
+  background: var(--border-primary);
+  content: "";
+  transition: background-color var(--duration-interaction) ease,
+    width var(--duration-interaction) ease;
+}
+
+.column-resizer:hover::after,
+.column-resizer:focus-visible::after,
+.column-resizer.is-dragging::after {
+  width: 2px;
+  background: var(--accent);
+}
+
+.column-resizer:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+}
+
 .download-table td {
   background: var(--bg-surface);
   font-size: var(--font-size-control);
@@ -722,13 +772,13 @@ svg {
 }
 
 .download-table .col-id {
-  width: 64px;
+  width: var(--column-id-width, 64px);
   text-align: center;
   font-variant-numeric: tabular-nums;
 }
 
 .download-table .col-link {
-  width: auto;
+  width: var(--column-link-width, 280px);
 }
 
 .download-table td.col-link {
@@ -736,16 +786,22 @@ svg {
 }
 
 .download-table .col-detail {
-  width: 290px;
+  width: var(--column-detail-width, 290px);
 }
 
 .download-table .col-status {
-  width: 120px;
+  width: var(--column-status-width, 120px);
   text-align: center;
 }
 
+.download-table .col-speed {
+  width: var(--column-speed-width, 120px);
+  text-align: end;
+  font-variant-numeric: tabular-nums;
+}
+
 .download-table .col-action {
-  width: 160px;
+  width: var(--column-action-width, 160px);
   text-align: center;
 }
 
@@ -785,6 +841,10 @@ svg {
 
 .status-label[data-status="downloading"] {
   color: var(--accent);
+}
+
+.status-label[data-status="processing"] {
+  color: var(--status-warning);
 }
 
 .status-label[data-status="done"],
@@ -1051,7 +1111,7 @@ svg {
   color: var(--status-danger);
 }
 
-@media (max-width: 1040px) {
+@media (max-width: 820px) {
   body {
     height: auto;
     min-height: 100vh;
@@ -1099,7 +1159,7 @@ svg {
 
   .download-table th,
   .download-table td {
-    height: 30px;
+    height: 27px;
   }
 
   .detail-meta,

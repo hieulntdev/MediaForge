@@ -38,10 +38,10 @@
 
   /* Type scale */
   --text-caption: 12px;
-  --text-body-sm: 14px;
-  --text-body: 17px;
-  --text-subheading: 21px;
-  --text-heading-sm: 28px;
+  --text-body-sm: 13px;
+  --text-body: 15px;
+  --text-subheading: 19px;
+  --text-heading-sm: 25px;
 
   /* Negative tracking (the Apple signature) */
   --tracking-caption: -0.264px;
@@ -51,14 +51,14 @@
 
   /* ---- Spacing (4px base) --------------------------------------------- */
   --spacing-4: 4px;
-  --spacing-8: 8px;
-  --spacing-12: 12px;
-  --spacing-16: 16px;
-  --spacing-20: 20px;
-  --spacing-24: 24px;
-  --spacing-40: 40px;
-  --spacing-48: 48px;
-  --spacing-56: 56px;
+  --spacing-8: 7px;
+  --spacing-12: 11px;
+  --spacing-16: 14px;
+  --spacing-20: 18px;
+  --spacing-24: 22px;
+  --spacing-40: 36px;
+  --spacing-48: 43px;
+  --spacing-56: 50px;
 
   /* ---- Shape ----------------------------------------------------------- */
   --radius-sm: 8px;      /* cards, images, inputs */
@@ -71,7 +71,12 @@
   --surface-pebble: #e2e2e5;
 
   /* ---- Component metrics & elevation ----------------------------------- */
-  --row-h: 36px;          /* fixed table row height; container fits 11 rows */
+  --height-control: 40px;
+  --height-button: 32px;
+  --height-compact: 29px;
+  --height-micro: 25px;
+  --height-progress: 7px;
+  --row-h: 32px;          /* compact table row height */
   --shadow-menu: 0 8px 24px rgba(0, 0, 0, 0.12);
 }
 
@@ -189,8 +194,8 @@ button:focus:not(:focus-visible) {
 .theme-toggle {
   display: inline-flex;
   flex: 0 0 auto;
-  width: 36px;
-  height: 36px;
+  width: var(--height-button);
+  height: var(--height-button);
   align-items: center;
   justify-content: center;
   margin-left: auto;
@@ -257,14 +262,14 @@ button:focus:not(:focus-visible) {
 }
 
 .btn-secondary--lg {
-  height: 44px;
+  height: var(--height-control);
   padding: 0 var(--spacing-24);
   font-size: var(--text-body);
 }
 
 .checkbox-label {
   display: flex;
-  height: 44px;
+  height: var(--height-control);
   align-items: center;
   gap: var(--spacing-8);
   color: var(--color-carbon);
@@ -307,7 +312,7 @@ button:focus:not(:focus-visible) {
   display: flex;
   width: 100%;
   min-width: 0;
-  height: 44px;
+  height: var(--height-control);
   align-items: center;
   gap: var(--spacing-12);
   padding: 0 var(--spacing-16);
@@ -353,7 +358,7 @@ button:focus:not(:focus-visible) {
 /* ---- Threads select ---------------------------------------------------- */
 .select-box {
   position: relative;
-  height: 44px;
+  height: var(--height-control);
 }
 
 .select-box select {
@@ -394,7 +399,7 @@ button:focus:not(:focus-visible) {
 /* ---- Primary action (filled pill) ------------------------------------- */
 .btn-create {
   display: inline-flex;
-  height: 44px;
+  height: var(--height-control);
   align-items: center;
   justify-content: center;
   gap: var(--spacing-8);
@@ -619,7 +624,7 @@ thead th {
   align-items: center;
   justify-content: center;
   gap: var(--spacing-8);
-  height: 32px;
+  height: var(--height-compact);
   padding: 0 var(--spacing-8);
   border: 1px solid var(--color-link-blue);
   border-radius: var(--radius-full);
@@ -643,7 +648,7 @@ thead th {
   align-items: center;
   justify-content: center;
   gap: 6px;
-  height: 32px;
+  height: var(--height-compact);
   padding: 0 var(--spacing-8);
   border: 1px solid var(--color-hairline);
   border-radius: var(--radius-full);
@@ -698,7 +703,7 @@ thead th {
 }
 
 .select-box--compact {
-  height: 32px;
+  height: var(--height-compact);
 }
 
 .select-box--compact select {
@@ -714,7 +719,7 @@ thead th {
 .pagination {
   display: flex;
   flex: 0 0 auto;
-  min-height: 32px;
+  min-height: var(--height-compact);
   align-items: center;
   justify-content: center;
   gap: var(--spacing-8);
@@ -722,8 +727,8 @@ thead th {
 
 .page-btn {
   display: inline-flex;
-  min-width: 32px;
-  height: 32px;
+  min-width: var(--height-compact);
+  height: var(--height-compact);
   align-items: center;
   justify-content: center;
   padding: 0 var(--spacing-8);
@@ -754,8 +759,8 @@ thead th {
 
 .page-ellipsis {
   display: inline-flex;
-  min-width: 32px;
-  height: 32px;
+  min-width: var(--height-compact);
+  height: var(--height-compact);
   align-items: center;
   justify-content: center;
   color: var(--color-mist);
@@ -794,7 +799,7 @@ thead th {
 
 .goto-input {
   width: 52px;
-  height: 32px;
+  height: var(--height-compact);
   padding: 0 var(--spacing-8);
   border: 1px solid var(--color-hairline);
   border-radius: var(--radius-sm);
@@ -869,7 +874,7 @@ progress {
   appearance: none;
   flex: 0 0 auto;
   width: 100%;
-  height: 8px;
+  height: var(--height-progress);
   overflow: hidden;
   border: 0;
   border-radius: var(--radius-full);
@@ -910,7 +915,7 @@ progress::-moz-progress-bar {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  height: 28px;
+  height: var(--height-micro);
   padding: 0 var(--spacing-12);
   border: 1px solid var(--color-hairline);
   border-radius: var(--radius-full);
@@ -940,7 +945,7 @@ progress::-moz-progress-bar {
 .btn-secondary,
 .btn-danger {
   display: inline-flex;
-  height: 36px;
+  height: var(--height-button);
   align-items: center;
   justify-content: center;
   gap: var(--spacing-8);
@@ -1048,7 +1053,7 @@ progress::-moz-progress-bar {
 
   .workspace {
     flex-direction: column;
-    gap: var(--spacing-12);
+    gap: 12px;
     overflow: visible;
   }
 
@@ -1095,6 +1100,6 @@ progress::-moz-progress-bar {
   }
 
   :root {
-    --row-h: 30px;
+    --row-h: 27px;
   }
 }

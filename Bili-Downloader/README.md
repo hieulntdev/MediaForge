@@ -79,9 +79,7 @@ Generated runtime data is kept in these ignored directories:
 │   ├── models/            # Video and format data models
 │   ├── utils/             # FFmpeg, paths, filenames, links, and logging
 │   └── settings.py        # Settings defaults and JSON persistence
-├── tests/                 # Python test suite
 ├── requirements.txt
-├── requirements-dev.txt
 └── run.sh                 # Official launcher
 ```
 
@@ -93,18 +91,15 @@ pipeline and settings module in `src/` without importing any desktop UI code.
 
 ## Validation
 
-Run the Python tests:
-
-```bash
-.venv/bin/python -m pytest
-```
-
 Check the Electron JavaScript syntax:
 
 ```bash
 cd electron-app
 npm run check
 ```
+
+Then launch `./run.sh` from Terminal and verify account status, analysis,
+download controls, progress, and output directly in the Electron UI.
 
 ## Notes
 

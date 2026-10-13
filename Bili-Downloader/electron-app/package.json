@@ -7,7 +7,7 @@
   "license": "MIT",
   "scripts": {
     "start": "electron .",
-    "check": "node --check main.js && node --check preload.js && node --check renderer.js"
+    "check": "node --check main.js && node --check preload.js && node --check account-status.js && node --check download-state.js && node --check renderer.js"
   },
   "devDependencies": {
     "electron": "44.0.0"

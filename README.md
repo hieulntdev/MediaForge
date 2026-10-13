@@ -19,7 +19,7 @@ nvm use
 npm ci
 npm run bootstrap:runtimes
 npm run health
-npm test
+npm run check
 npm start
 ```
 
@@ -43,7 +43,6 @@ backend/mediaforge/modules/   Module manifests and desktop boundary adapters
 frontend/                     Unified dashboard and shared visual system
 runtimes/                     Reviewed runtime manifests and lock snapshots
 scripts/                      Setup, health, launch, and verification commands
-tests/                        Unified desktop and Python contract tests
 Bili-Downloader/              Bili domain worker and transitional renderer
 SFX-Converter/                SFX domain worker and transitional renderer
 SRT-to-Speech-Studio/         Speech domain worker and transitional renderer
@@ -74,17 +73,20 @@ ownership, and runtime policy.
 
 - `npm start` launches the unified Electron 44.4.5 shell.
 - `npm run check` syntax-checks all unified JavaScript.
-- `npm run test:node` runs desktop orchestration tests.
-- `npm run test:python` runs Python contract tests in the base runtime.
-- `npm test` runs the complete unified static and contract test gate.
 - `npm run health` validates all module manifests, four runtimes, FFmpeg, and
   FFprobe.
 - `npm run bootstrap:runtimes` recreates environments from reviewed lock
   snapshots without merging their dependency graphs.
 
-Each production domain also has its own tests and standalone instructions in
-its local README. Run those suites when changing the corresponding domain or
-adapter boundary.
+Each production domain retains standalone launch and syntax-check instructions
+in its local README for direct verification.
+
+## Changelog policy
+
+Record user-visible additions, changes, fixes, removals, and performance work
+under `Unreleased` in [CHANGELOG.md](CHANGELOG.md). Avoid duplicate entries.
+For a release, move those entries into a versioned section and add the actual
+release date.
 
 ## Troubleshooting
 
@@ -94,5 +96,5 @@ adapter boundary.
 - If health checks cannot find media tools, install FFmpeg and ensure both
   `ffmpeg` and `ffprobe` are on `PATH`.
 - Model downloads and production network jobs are deliberately not part of
-  setup or unit tests. Use the in-app model prefetch/status actions before an
+  setup verification. Use the in-app model prefetch/status actions before an
   SFX production run.
