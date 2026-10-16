@@ -91,21 +91,36 @@
     </div>
   </section>
 
-  <main class="workspace" id="main-split">
+  <main class="workspace">
     <section class="panel table-panel" aria-labelledby="downloads-title">
       <div class="panel-header">
         <h2 id="downloads-title">Downloads</h2>
+        <div class="filter-wrap">
+          <label for="status-filter">Status</label>
+          <span class="select-shell select-shell-compact">
+            <select id="status-filter" class="status-filter" aria-label="Filter downloads by status">
+              <option value="all" selected>All</option>
+              <option value="queued">Queued</option>
+              <option value="downloading">Downloading</option>
+              <option value="processing">Processing</option>
+              <option value="completed">Completed</option>
+              <option value="failed">Failed</option>
+              <option value="cancelled">Cancelled</option>
+            </select>
+            <svg class="select-chevron" viewBox="0 0 16 16" aria-hidden="true"><path d="m4 6 4 4 4-4" /></svg>
+          </span>
+        </div>
       </div>
       <div class="table-scroll" tabindex="0" aria-label="Downloads table">
         <table class="download-table">
           <thead>
             <tr>
-              <th class="col-id" data-column="id" scope="col"><span>ID</span></th>
-              <th class="col-link" data-column="link" scope="col"><span>Link</span></th>
-              <th class="col-detail" data-column="detail" scope="col"><span>Detail</span></th>
-              <th class="col-status" data-column="status" scope="col"><span>Status</span></th>
-              <th class="col-speed" data-column="speed" scope="col"><span>Speed</span></th>
-              <th class="col-action" data-column="action" scope="col"><span>Actions</span></th>
+              <th class="col-id" scope="col"><span>ID</span></th>
+              <th class="col-link" scope="col"><span>Link</span></th>
+              <th class="col-detail" scope="col"><span>Detail</span></th>
+              <th class="col-status" scope="col"><span>Status</span></th>
+              <th class="col-speed" scope="col"><span>Speed</span></th>
+              <th class="col-action" scope="col"><span>Actions</span></th>
             </tr>
           </thead>
           <tbody id="table-body"></tbody>
@@ -118,10 +133,10 @@
           <span class="select-shell select-shell-compact">
             <select id="page-size-select" class="page-size" aria-label="Rows per page">
               <option value="auto">Auto</option>
-              <option value="5">5</option>
               <option value="10">10</option>
               <option value="20">20</option>
               <option value="50">50</option>
+              <option value="100">100</option>
             </select>
             <svg class="select-chevron" viewBox="0 0 16 16" aria-hidden="true"><path d="m4 6 4 4 4-4" /></svg>
           </span>
@@ -130,18 +145,19 @@
         <nav id="pagination" class="pagination" aria-label="Pagination"></nav>
         <div class="page-goto">
           <label for="goto-input">Go to</label>
-          <input id="goto-input" class="goto-input" type="number" min="1" value="1" inputmode="numeric" />
+          <input id="goto-input" class="goto-input" type="number" min="1" step="1" value="1" inputmode="numeric" />
           <span id="page-total" class="page-total">/ 1</span>
         </div>
       </div>
     </section>
 
-    <div id="split-divider" class="split-divider" role="separator" aria-label="Resize downloads and activity panels" aria-orientation="vertical" aria-valuemin="0" aria-valuemax="100" aria-valuenow="25" tabindex="0" title="Drag or use arrow keys to resize"></div>
-
     <aside class="panel activity-panel" aria-labelledby="activity-title">
       <div class="panel-header activity-header">
         <h2 id="activity-title">Activity Log</h2>
-        <button id="clear-log-button" type="button" class="button button-ghost button-micro">Clear</button>
+        <button id="clear-log-button" type="button" class="button button-ghost button-micro">
+          <svg aria-hidden="true" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13" /></svg>
+          <span class="button-label">Clear</span>
+        </button>
       </div>
       <div id="log" class="log" role="log" aria-live="polite" tabindex="0">
         <div class="log-empty">No activity yet.</div>

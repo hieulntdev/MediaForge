@@ -7,11 +7,8 @@ const LIGHT_THEME = 'light';
 const DARK_THEME = 'dark';
 const THREADS_KEY = 'srtts:threads';
 const TTS_MODEL_KEY = 'srtts:tts-model';
-const PANEL_WIDTH_KEY = 'srtts:table-panel-width';
-const MIN_PANEL_WIDTH = 320;
-const PANEL_RESIZE_STEP = 24;
 const DEFAULT_PAGE_SIZE = 10;
-const FALLBACK_ROW_HEIGHT = 36; // matches the --row-h default in styles.css
+const FALLBACK_ROW_HEIGHT = 36; // canonical grid row height in styles.css
 const DEFAULT_TTS_MODEL = 'vieneu';
 const MELOTTS_MODEL = 'melotts';
 const MELO_SPEAKERS = {
@@ -86,10 +83,6 @@ const elements = {
   gotoInput: document.querySelector('#goto-page-input'),
   gotoTotal: document.querySelector('#goto-page-total'),
   themeToggle: document.querySelector('#theme-toggle'),
-  workspace: document.querySelector('#workspace'),
-  tablePanel: document.querySelector('#table-panel'),
-  processingPanel: document.querySelector('#processing-panel'),
-  panelResizer: document.querySelector('#panel-resizer'),
   tableContainer: document.querySelector('#table-container'),
   tableHead: document.querySelector('#table-head')
 };
@@ -424,7 +417,7 @@ function renderPagination(visible) {
 
 function currentRowHeight() {
   if (typeof getComputedStyle !== 'function') return FALLBACK_ROW_HEIGHT;
-  const raw = getComputedStyle(document.documentElement).getPropertyValue('--row-h');
+  const raw = getComputedStyle(document.documentElement).getPropertyValue('--height-table-row');
   const parsed = Number.parseFloat(raw);
   return Number.isFinite(parsed) && parsed > 0 ? parsed : FALLBACK_ROW_HEIGHT;
 }
@@ -451,9 +444,11 @@ function handleTableContainerResize() {
 
 function render() {
   const visible = visibleCues();
-  elements.tableTitle.textContent = `Subtitle Segments (${state.cues.length} total)`;
-  renderRows(visible);
+  elements.tableTitle.textContent = state.filter === 'all'
+    ? `Subtitle Segments (${state.cues.length} total)`
+    : `Subtitle Segments (${visible.length} of ${state.cues.length})`;
   renderPagination(visible);
+  renderRows(visible);
   renderEmptyState(visible);
   refreshControls();
 }
@@ -959,8 +954,31 @@ function applyGotoPage() {
   render();
 }
 
+function sanitizeGotoPageInput() {
+  if (elements.gotoInput.value && !/^\d+$/.test(elements.gotoInput.value)) {
+    elements.gotoInput.value = '';
+  }
+}
+
+function preventInvalidGotoInsertion(event) {
+  const insertedText = event.data
+    ?? event.clipboardData?.getData('text')
+    ?? event.dataTransfer?.getData('text')
+    ?? '';
+  if (/\D/.test(insertedText)) event.preventDefault();
+}
+
+elements.gotoInput.addEventListener('beforeinput', preventInvalidGotoInsertion);
+elements.gotoInput.addEventListener('paste', preventInvalidGotoInsertion);
+elements.gotoInput.addEventListener('drop', preventInvalidGotoInsertion);
+elements.gotoInput.addEventListener('input', sanitizeGotoPageInput);
 elements.gotoInput.addEventListener('change', applyGotoPage);
 elements.gotoInput.addEventListener('keydown', (event) => {
+  if (!event.ctrlKey && !event.metaKey && !event.altKey
+      && ['e', 'E', '+', '-', '.', ','].includes(event.key)) {
+    event.preventDefault();
+    return;
+  }
   if (event.key === 'Enter') applyGotoPage();
 });
 
@@ -969,84 +987,12 @@ elements.clearLogButton.addEventListener('click', () => {
   appendLog('Log cleared');
 });
 
-// ---- Panel resizer: drag the divider to re-balance the table/processing
-// widths. Persisted so the split survives a restart.
-function clampPanelWidth(px) {
-  const workspaceWidth = elements.workspace.getBoundingClientRect().width;
-  const resizerWidth = elements.panelResizer.getBoundingClientRect().width || 16;
-  const max = Math.max(MIN_PANEL_WIDTH, workspaceWidth - resizerWidth - MIN_PANEL_WIDTH);
-  return Math.min(max, Math.max(MIN_PANEL_WIDTH, Math.round(px)));
-}
-
-function applyPanelWidth(px) {
-  elements.tablePanel.style.flex = `0 0 ${px}px`;
-  elements.processingPanel.style.flex = '1 1 auto';
-}
-
-function savePanelWidth(px) {
-  const workspaceWidth = elements.workspace.getBoundingClientRect().width;
-  const ratio = workspaceWidth > 0 ? px / workspaceWidth : 0;
-  localStorage.setItem(PANEL_WIDTH_KEY, String(ratio));
-}
-
-function applyPanelRatio(ratio) {
-  const workspaceWidth = elements.workspace.getBoundingClientRect().width;
-  applyPanelWidth(clampPanelWidth(ratio * workspaceWidth));
-}
-
-// A ratio is always in (0, 1); anything outside that is a stale value saved
-// as raw pixels by an older build and must be discarded, not applied.
-function readSavedPanelRatio() {
-  const saved = Number(localStorage.getItem(PANEL_WIDTH_KEY));
-  return Number.isFinite(saved) && saved > 0 && saved < 1 ? saved : null;
-}
-
-function initPanelWidth() {
-  const saved = readSavedPanelRatio();
-  if (saved !== null) applyPanelRatio(saved);
-  else localStorage.removeItem(PANEL_WIDTH_KEY);
-}
-
-let panelDrag = null;
-
-elements.panelResizer.addEventListener('mousedown', (event) => {
-  panelDrag = { startX: event.clientX, startWidth: elements.tablePanel.getBoundingClientRect().width };
-  elements.panelResizer.classList.add('is-dragging');
-  event.preventDefault();
-});
-
-document.addEventListener('mousemove', (event) => {
-  if (!panelDrag) return;
-  applyPanelWidth(clampPanelWidth(panelDrag.startWidth + (event.clientX - panelDrag.startX)));
-});
-
-document.addEventListener('mouseup', () => {
-  if (!panelDrag) return;
-  panelDrag = null;
-  elements.panelResizer.classList.remove('is-dragging');
-  savePanelWidth(Math.round(elements.tablePanel.getBoundingClientRect().width));
-});
-
-elements.panelResizer.addEventListener('keydown', (event) => {
-  if (event.key !== 'ArrowLeft' && event.key !== 'ArrowRight') return;
-  const delta = event.key === 'ArrowLeft' ? -PANEL_RESIZE_STEP : PANEL_RESIZE_STEP;
-  const next = clampPanelWidth(elements.tablePanel.getBoundingClientRect().width + delta);
-  applyPanelWidth(next);
-  savePanelWidth(next);
-});
-
-window.addEventListener('resize', () => {
-  const saved = readSavedPanelRatio();
-  if (saved !== null) applyPanelRatio(saved);
-});
-
 initTheme();
 initThreads();
 initModelSelector();
-initPanelWidth();
 
-// Keep Auto page size in sync with the table's real height: window resizes,
-// the panel-resizer drag, and the short-screen media query all change it.
+// Keep Auto page size in sync with the table's real height when the window or
+// responsive layout changes. This observes layout; it does not enable manual resize.
 if (typeof ResizeObserver === 'function' && elements.tableContainer) {
   new ResizeObserver(handleTableContainerResize).observe(elements.tableContainer);
 }

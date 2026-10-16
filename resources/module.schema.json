@@ -41,7 +41,7 @@
       "properties": {
         "entry": { "type": "string", "minLength": 1 },
         "accent": { "enum": ["blue", "amber", "violet"] },
-        "bridge": { "enum": ["biliAPI", "sfxApi", "srtAPI"] }
+        "bridge": { "enum": ["biliAPI", "sfxApi", "srtAPI", "hongguoAPI"] }
       },
       "additionalProperties": false
     }

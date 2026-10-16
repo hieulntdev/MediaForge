@@ -1,24 +1,11 @@
 'use strict';
 
-// Clear only renderer-owned browser state at the start of a new application
-// process. Cookies are intentionally excluded because MediaForge account input
-// is a user-selected file, not an Electron cookie jar.
-const TRANSIENT_WEB_STORAGES = Object.freeze([
-  'appcache',
-  'filesystem',
-  'indexdb',
-  'localstorage',
-  'serviceworkers',
-  'cachestorage',
-  'websql'
-]);
-
+// Browser cache is transient, but localStorage and IndexedDB may contain
+// namespaced user preferences. Renderer session keys are removed explicitly
+// by frontend/src/app/module-reset.mjs instead of clearing an entire origin.
 async function resetRendererSession(electronSession) {
   if (!electronSession) throw new TypeError('An Electron session is required.');
-  await Promise.all([
-    electronSession.clearCache(),
-    electronSession.clearStorageData({ storages: [...TRANSIENT_WEB_STORAGES] })
-  ]);
+  await electronSession.clearCache();
 }
 
-module.exports = { TRANSIENT_WEB_STORAGES, resetRendererSession };
+module.exports = { resetRendererSession };

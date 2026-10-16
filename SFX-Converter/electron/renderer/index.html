@@ -72,7 +72,12 @@
       <section class="log-section" aria-labelledby="log-title">
         <div class="log-header">
           <h2 id="log-title">Activity Log</h2>
-          <button id="clear-log" class="button button-ghost button-micro" type="button">Clear</button>
+          <button id="clear-log" class="button button-ghost button-micro" type="button">
+            <svg aria-hidden="true" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13"></path>
+            </svg>
+            <span>Clear</span>
+          </button>
         </div>
         <div id="log-view" class="log-view" role="log" aria-label="Processing activity log" aria-live="polite" tabindex="0">
           <div class="log-empty">No activity yet.</div>

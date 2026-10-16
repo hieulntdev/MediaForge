@@ -36,6 +36,19 @@ class DialogService {
     const result = await shell.openPath(revealParent ? path.dirname(resolved) : resolved);
     return result || null;
   }
+
+  async confirmModuleReset() {
+    const { response } = await dialog.showMessageBox(this.getWindow(), {
+      type: 'warning',
+      buttons: ['Cancel', 'Reset'],
+      defaultId: 0,
+      cancelId: 0,
+      noLink: true,
+      title: 'Reset Module',
+      message: "Are you sure you want to clear all data and restore this module's default settings? This action cannot be undone."
+    });
+    return response === 1;
+  }
 }
 
 module.exports = { DialogService, DIALOGS };

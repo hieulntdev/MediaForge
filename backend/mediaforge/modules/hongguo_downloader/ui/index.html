@@ -1,0 +1,140 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Hongguo Downloader</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="app-shell">
+    <section class="setup" aria-label="Hongguo download setup">
+      <label class="field field-urls">
+        <span>Series / Episode URLs</span>
+        <textarea id="urls" rows="2" placeholder="Paste Hongguo URLs, one per line…" spellcheck="false"></textarea>
+      </label>
+      <div class="setup-actions">
+        <button id="analyze" class="button button-primary" type="button">Analyze</button>
+        <button id="add-queue" class="button button-secondary" type="button" disabled>Add to Queue</button>
+      </div>
+      <label class="field field-output">
+        <span>Output Folder</span>
+        <button id="output" class="picker" type="button"><span id="output-path">Choose an output folder</span><strong>Browse</strong></button>
+      </label>
+      <label class="field field-compact">
+        <span>Quality</span>
+        <select id="quality">
+          <option value="best">Best Available</option><option value="2160p">2160p</option>
+          <option value="1440p">1440p</option><option value="1080p">1080p</option>
+          <option value="720p">720p</option><option value="480p">480p</option>
+        </select>
+      </label>
+      <label class="field field-compact">
+        <span>Concurrent</span>
+        <select id="concurrency"><option>1</option><option>2</option><option selected>3</option><option>4</option><option>5</option><option>6</option></select>
+      </label>
+      <label class="field field-compact">
+        <span>Existing Files</span>
+        <select id="duplicates"><option value="rename">Rename Automatically</option><option value="skip">Skip Existing</option><option value="replace">Replace</option></select>
+      </label>
+    </section>
+
+    <section class="selection-bar" aria-label="Episode selection">
+      <div class="selection-actions">
+        <button id="select-all" class="button button-micro button-ghost" type="button">Select All</button>
+        <button id="deselect-all" class="button button-micro button-ghost" type="button">Deselect All</button>
+        <label class="range-label" for="range">Range</label>
+        <input id="range" class="range-input" type="text" placeholder="1-10,15,20-30">
+        <button id="apply-range" class="button button-micro button-secondary" type="button">Apply</button>
+      </div>
+      <span id="summary" class="summary" role="status" aria-live="polite">No episodes analyzed.</span>
+    </section>
+
+    <section class="queue-actions" aria-label="Queue controls">
+      <div class="queue-progress">
+        <div class="progress-summary">
+          <span id="phase" class="status" role="status" aria-live="polite">Idle</span>
+          <span id="overall-label" class="summary">0 / 0</span>
+        </div>
+        <progress id="overall-progress" max="100" value="0" aria-label="Overall queue progress"></progress>
+      </div>
+      <div class="queue-buttons">
+        <button id="start" class="button button-primary" type="button" disabled>Start Download</button>
+        <button id="pause" class="button button-secondary" type="button" disabled>Pause</button>
+        <button id="cancel" class="button button-danger" type="button" disabled>Cancel</button>
+        <button id="retry" class="button button-secondary" type="button" disabled>Retry Failed</button>
+        <button id="remove" class="button button-ghost" type="button" disabled>Remove Completed</button>
+        <button id="clear-queue" class="button button-ghost" type="button" disabled>
+          <svg aria-hidden="true" viewBox="0 0 24 24"><path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13"/></svg>
+          <span>Clear Queue</span>
+        </button>
+      </div>
+    </section>
+
+    <main class="workspace">
+      <section class="panel episodes-panel" aria-labelledby="episodes-title">
+        <header class="panel-header">
+          <h2 id="episodes-title">Episode List & Queue</h2>
+          <div class="filter-wrap">
+            <label for="status-filter">Status</label>
+            <span class="select-shell select-shell-compact">
+              <select id="status-filter" class="compact-select" aria-label="Filter episodes by status">
+                <option value="all" selected>All</option>
+                <option value="ready">Ready</option>
+                <option value="analyzing">Analyzing</option>
+                <option value="queued">Queued</option>
+                <option value="downloading">Downloading</option>
+                <option value="paused">Paused</option>
+                <option value="completed">Completed</option>
+                <option value="failed">Failed</option>
+                <option value="cancelled">Cancelled</option>
+              </select>
+              <svg class="select-chevron" viewBox="0 0 16 16" aria-hidden="true"><path d="m4 6 4 4 4-4"/></svg>
+            </span>
+          </div>
+        </header>
+        <div class="table-scroll" tabindex="0">
+          <table id="episodes-table">
+            <thead><tr>
+              <th class="check-column"><input id="header-check" type="checkbox" aria-label="Select all visible episodes"></th>
+              <th data-sort="number"><span>Episode</span></th><th data-sort="title"><span>Title</span></th><th data-sort="resolution"><span>Resolution</span></th>
+              <th data-sort="size"><span>Size</span></th><th data-sort="progress"><span>Progress</span></th><th data-sort="speed"><span>Speed</span></th>
+              <th data-sort="eta"><span>ETA</span></th><th data-sort="status"><span>Status</span></th>
+            </tr></thead>
+            <tbody id="episodes-body"></tbody>
+          </table>
+          <p id="empty" class="empty-state">Paste one or more Hongguo URLs and select Analyze.</p>
+        </div>
+        <div class="table-footer">
+          <div class="page-size-group">
+            <label for="page-size-select">Show</label>
+            <span class="select-shell select-shell-compact">
+              <select id="page-size-select" class="compact-select" aria-label="Rows per page">
+                <option value="auto" selected>Auto</option>
+                <option value="10">10</option>
+                <option value="20">20</option>
+                <option value="50">50</option>
+                <option value="100">100</option>
+              </select>
+              <svg class="select-chevron" viewBox="0 0 16 16" aria-hidden="true"><path d="m4 6 4 4 4-4"/></svg>
+            </span>
+            <span>per page</span>
+          </div>
+          <nav id="pagination" class="pagination" aria-label="Episode pagination"></nav>
+          <div class="page-goto">
+            <label for="goto-input">Go to</label>
+            <input id="goto-input" class="goto-input" type="number" min="1" step="1" value="1" inputmode="numeric">
+            <span id="page-total" class="page-total">/ 1</span>
+          </div>
+        </div>
+      </section>
+      <aside class="panel log-panel" aria-labelledby="log-title">
+        <header class="panel-header"><h2 id="log-title">Activity Log</h2><button id="clear-log" class="button button-micro button-ghost" type="button"><svg aria-hidden="true" viewBox="0 0 24 24"><path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13"/></svg><span>Clear</span></button></header>
+        <div id="log" class="log" role="log" aria-live="polite" tabindex="0"><p class="log-empty">No activity yet.</p></div>
+      </aside>
+    </main>
+  </div>
+  <button id="theme-toggle" type="button" hidden aria-label="Switch theme"></button>
+  <script src="renderer.js"></script>
+</body>
+</html>

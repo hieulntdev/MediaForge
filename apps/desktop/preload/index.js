@@ -2,7 +2,7 @@
 
 const { contextBridge, ipcRenderer } = require('electron');
 const CHANNELS = Object.freeze({
-  MODULES_LIST: 'mediaforge:modules:list', MODULE_VIEW: 'mediaforge:modules:view', MODULE_EXECUTE: 'mediaforge:module:execute', MODULE_EVENT: 'mediaforge:module:event',
+  MODULES_LIST: 'mediaforge:modules:list', MODULE_VIEW: 'mediaforge:modules:view', MODULE_EXECUTE: 'mediaforge:module:execute', MODULE_RESET: 'mediaforge:module:reset', MODULE_EVENT: 'mediaforge:module:event',
   TASKS_LIST: 'mediaforge:tasks:list', TASK_CANCEL: 'mediaforge:task:cancel', TASK_PAUSE: 'mediaforge:task:pause',
   TASK_RESUME: 'mediaforge:task:resume', TASK_EVENT: 'mediaforge:task:event', HEALTH_GET: 'mediaforge:health:get',
   DIALOG_OPEN: 'mediaforge:dialog:open', SHELL_OPEN_PATH: 'mediaforge:shell:open-path',
@@ -30,6 +30,7 @@ contextBridge.exposeInMainWorld('mediaForge', Object.freeze({
   listModules: () => ipcRenderer.invoke(CHANNELS.MODULES_LIST),
   loadModuleView: (moduleId) => ipcRenderer.invoke(CHANNELS.MODULE_VIEW, moduleId),
   execute,
+  resetModule: (moduleId) => ipcRenderer.invoke(CHANNELS.MODULE_RESET, moduleId),
   listTasks: () => ipcRenderer.invoke(CHANNELS.TASKS_LIST),
   cancelTask: (taskId) => ipcRenderer.invoke(CHANNELS.TASK_CANCEL, taskId),
   pauseTask: (taskId) => ipcRenderer.invoke(CHANNELS.TASK_PAUSE, taskId),
@@ -74,6 +75,24 @@ contextBridge.exposeInMainWorld('biliAPI', Object.freeze({
   saveSettings: (settings) => execute('bili_downloader', 'set_settings', { settings }),
   getState: () => execute('bili_downloader', 'get_state'),
   onBackendEvent: (callback) => subscribe(CHANNELS.MODULE_EVENT, callback, 'bili_downloader')
+}));
+
+contextBridge.exposeInMainWorld('hongguoAPI', Object.freeze({
+  selectOutput: (defaultPath) => ipcRenderer.invoke(CHANNELS.DIALOG_OPEN, { kind: 'folder', defaultPath }),
+  getState: () => execute('hongguo_downloader', 'get_state'),
+  getSettings: () => execute('hongguo_downloader', 'get_settings'),
+  saveSettings: (settings) => execute('hongguo_downloader', 'set_settings', { settings }),
+  analyze: (urls) => execute('hongguo_downloader', 'analyze', { urls }),
+  addToQueue: (ids) => execute('hongguo_downloader', 'add_to_queue', { ids }),
+  start: (ids) => execute('hongguo_downloader', 'start', { ids }),
+  pause: () => execute('hongguo_downloader', 'pause'),
+  resume: () => execute('hongguo_downloader', 'resume'),
+  cancel: () => execute('hongguo_downloader', 'cancel'),
+  retryFailed: () => execute('hongguo_downloader', 'retry_failed'),
+  removeCompleted: () => execute('hongguo_downloader', 'remove_completed'),
+  clearQueue: () => execute('hongguo_downloader', 'clear_queue'),
+  clearLog: () => execute('hongguo_downloader', 'clear_log'),
+  onEvent: (callback) => subscribe(CHANNELS.MODULE_EVENT, callback, 'hongguo_downloader')
 }));
 
 contextBridge.exposeInMainWorld('srtAPI', Object.freeze({

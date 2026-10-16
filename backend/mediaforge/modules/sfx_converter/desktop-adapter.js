@@ -43,6 +43,11 @@ class SfxAdapter extends EventEmitter {
     return ['extract_sfx', 'prefetch_model'].includes(action) ? 'heavy' : 'light';
   }
 
+  isBusy() {
+    if (!this.activeTaskId) return false;
+    try { return !TERMINAL_STATES.has(this.taskManager.get(this.activeTaskId).state); } catch { return false; }
+  }
+
   launch() {
     const project = path.join(this.pathService.projectRoot, 'SFX-Converter');
     return {
@@ -181,6 +186,13 @@ class SfxAdapter extends EventEmitter {
     if (!TERMINAL_STATES.has(task.state)) this.taskManager.transition(task.id, 'FAILED', { error: { code, message, retryable: true } });
   }
 
+  resetToDefaults() {
+    const active = this.activeTaskId ? this.taskManager.get(this.activeTaskId) : null;
+    if (active && !TERMINAL_STATES.has(active.state)) throw new Error('Cannot reset SFX Converter while processing is active.');
+    this.activeTaskId = null;
+    return { reset: true };
+  }
+
   async shutdown() {
     await this.prefetchProcess?.terminate({ timeoutMs: 5000 });
     await this.worker?.terminate({ gracefulMessage: { type: 'backend:shutdown' } });
@@ -188,4 +200,5 @@ class SfxAdapter extends EventEmitter {
 }
 
 function createAdapter(context) { return new SfxAdapter(context); }
-module.exports = { MODEL, SfxAdapter, createAdapter };
+async function cleanupSession() {}
+module.exports = { MODEL, SfxAdapter, cleanupSession, createAdapter };

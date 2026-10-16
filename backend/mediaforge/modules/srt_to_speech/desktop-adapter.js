@@ -2,6 +2,7 @@
 
 const { EventEmitter } = require('node:events');
 const { execFile } = require('node:child_process');
+const crypto = require('node:crypto');
 const fs = require('node:fs');
 const fsp = require('node:fs/promises');
 const path = require('node:path');
@@ -15,7 +16,7 @@ const MELO_SPEAKERS = Object.freeze({
   ES: new Set(['ES']), FR: new Set(['FR']), ZH: new Set(['ZH']),
   JP: new Set(['JP']), KR: new Set(['KR'])
 });
-const RETRY_STATE_CLEANUP_POLICY = 'explicit-only';
+const RETRY_STATE_CLEANUP_POLICY = 'session-scoped';
 
 function normalizeTtsConfig(job) {
   const ttsModel = String(job.ttsModel || DEFAULT_TTS_MODEL).trim().toLowerCase();
@@ -46,11 +47,20 @@ class SrtAdapter extends EventEmitter {
     return ['synthesize', 'retry_cue', 'validate_content'].includes(action) ? 'heavy' : 'light';
   }
 
+  isBusy() {
+    if (!this.active) return false;
+    try { return !TERMINAL_STATES.has(this.taskManager.get(this.active.taskId).state); } catch { return false; }
+  }
+
   stateDirectoryFor(job, destination = null) {
     const subtitleName = path.basename(job.subtitlePath, path.extname(job.subtitlePath));
     const archive = destination || path.join(job.outputPath, `${subtitleName}.zsp`);
-    if (job.ttsModel === MELOTTS_MODEL) return `${archive}.melotts.${job.meloLanguage}.${job.meloSpeaker}.retry`;
-    return `${archive}.retry`;
+    const identity = JSON.stringify([
+      path.resolve(job.subtitlePath), path.resolve(archive), job.ttsModel,
+      job.meloLanguage || '', job.meloSpeaker || ''
+    ]);
+    const key = crypto.createHash('sha256').update(identity).digest('hex').slice(0, 24);
+    return path.join(this.pathService.cache, 'srt-to-speech', `${key}.retry`);
   }
 
   ttsArguments(job) {
@@ -94,8 +104,8 @@ class SrtAdapter extends EventEmitter {
         '--state-dir', stateDirectory, '--json-events', '--workers', String(job.workers || ''), ...this.ttsArguments(job)];
       if (job.validateContent) args.push('--validate-content');
       stage = 'synthesizing';
-      // A normal launch may resume a journal left by an interrupted previous
-      // application session. Deletion is reserved for clear_retry_state.
+      // Retry state is reusable only inside this application session. The
+      // shared startup cleanup removes this app-owned cache after any exit.
       this.allowedStateFiles.clear(); this.allowedPreviewFiles.clear(); this.currentArchive = '';
     } else if (action === 'retry_cue') {
       const position = Number(payload.position);
@@ -240,12 +250,30 @@ class SrtAdapter extends EventEmitter {
     return { cleared: true, stateDirectory };
   }
 
+  async resetToDefaults() {
+    const active = this.active ? this.taskManager.get(this.active.taskId) : null;
+    if (active && !TERMINAL_STATES.has(active.state)) throw new Error('Cannot reset SRT-to-Speech while processing is active.');
+    this.active = null;
+    this.currentArchive = '';
+    this.currentStateAudioDir = '';
+    this.allowedPreviewFiles.clear();
+    this.allowedStateFiles.clear();
+    await fsp.rm(path.join(this.pathService.cache, 'srt-to-speech'), { recursive: true, force: true });
+    await fsp.rm(path.join(this.pathService.temp, 'srt-to-speech-preview'), { recursive: true, force: true });
+    return { reset: true };
+  }
+
   async shutdown() {
     if (this.active) await this.active.process.terminate({ timeoutMs: 5000 });
     await fsp.rm(path.join(this.pathService.temp, 'srt-to-speech-preview'), { recursive: true, force: true });
-    // Retry/journal directories are deliberately retained. Only previews are app-owned temp.
+    // Retry journals remain available until this process exits; startup cleanup
+    // removes the app-owned cache before the next session is created.
   }
 }
 
 function createAdapter(context) { return new SrtAdapter(context); }
-module.exports = { DEFAULT_TTS_MODEL, MELOTTS_MODEL, RETRY_STATE_CLEANUP_POLICY, SrtAdapter, createAdapter, normalizeTtsConfig };
+async function cleanupSession({ pathService }) {
+  await fsp.rm(path.join(pathService.cache, 'srt-to-speech'), { recursive: true, force: true });
+  await fsp.rm(path.join(pathService.temp, 'srt-to-speech-preview'), { recursive: true, force: true });
+}
+module.exports = { cleanupSession, DEFAULT_TTS_MODEL, MELOTTS_MODEL, RETRY_STATE_CLEANUP_POLICY, SrtAdapter, createAdapter, normalizeTtsConfig };

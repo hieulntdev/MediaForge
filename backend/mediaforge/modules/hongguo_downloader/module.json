@@ -1,0 +1,16 @@
+{
+  "$schema": "../../../../resources/module.schema.json",
+  "id": "hongguo_downloader",
+  "version": "1.0.0",
+  "displayName": "Hongguo Downloader",
+  "description": "Analyze and batch-download public Hongguo series and episodes with a session-scoped queue.",
+  "frontendRoute": "hongguo-downloader",
+  "runtime": "base",
+  "resourceClass": "medium",
+  "actions": ["get_state", "get_settings", "set_settings", "analyze", "add_to_queue", "start", "pause", "resume", "cancel", "retry_failed", "remove_completed", "clear_queue", "clear_log"],
+  "capabilities": { "cancel": true, "pause": true },
+  "inputs": ["url", "url.list"],
+  "outputs": ["media.video"],
+  "adapter": "desktop-adapter.js",
+  "ui": { "entry": "backend/mediaforge/modules/hongguo_downloader/ui/index.html", "accent": "blue", "bridge": "hongguoAPI" }
+}

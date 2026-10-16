@@ -7,6 +7,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Added Hongguo Downloader with public series and episode discovery, quality-aware batch queues, concurrent HLS/HTTP/DASH processing, retry, pause, cancellation, and verified stream-copy outputs.
+- Added persistent Hongguo download settings, in-session HLS segment checkpoints, output duplicate handling, sortable episode selection, and a redacted Activity Log.
+
+### Changed
+
+- Added a shared, once-per-launch session cleanup lifecycle for every discovered module while preserving settings, credentials, models, sources, and completed output files.
+- Added a header Clear action that blocks active work, confirms the reset, and restores only the current module's UI and ordinary settings to defaults.
+- Separated Hongguo persistent settings from transient queue, discovery, progress, and Activity Log state.
+
+### Fixed
+
+- Prevented stale queues, progress, logs, and renderer snapshots from reappearing after a normal exit, crash, or forced quit.
+- Made the Bili Activity Log responsive and non-resizable while retaining download-column resizing.
+
+### Removed
+
+- Removed the redundant Hongguo input Clear button beside Add to Queue.
+
 ## [1.1] - 2026-10-13
 
 ### Added

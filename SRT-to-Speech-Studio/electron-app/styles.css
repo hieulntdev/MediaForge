@@ -76,7 +76,15 @@
   --height-compact: 29px;
   --height-micro: 25px;
   --height-progress: 7px;
-  --row-h: 32px;          /* compact table row height */
+  --height-table-row: 36px;
+  --height-table-row-condensed: 30px;
+  --subtitle-grid-min-width: 1042px;
+  --subtitle-column-id: 64px;
+  --subtitle-column-duration: 290px;
+  --subtitle-column-text: 300px;
+  --subtitle-column-speed: 88px;
+  --subtitle-column-status: 120px;
+  --subtitle-column-action: 180px;
   --shadow-menu: 0 8px 24px rgba(0, 0, 0, 0.12);
 }
 
@@ -163,8 +171,8 @@ button:focus:not(:focus-visible) {
   flex-direction: column;
   min-width: 0;
   min-height: 0;
-  gap: var(--spacing-12);
-  padding: var(--spacing-12) var(--spacing-24);
+  gap: 12px;
+  padding: 12px 16px;
   overflow: hidden;
 }
 
@@ -255,16 +263,28 @@ button:focus:not(:focus-visible) {
 /* Validate Now sits next to Create Audio, matched in height so the two read
    as one action pair instead of Validate Now looking like an afterthought. */
 .action-buttons {
-  display: flex;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   align-items: center;
   justify-content: flex-end;
   gap: var(--spacing-12);
 }
 
-.btn-secondary--lg {
+.action-buttons > button {
+  width: 100%;
+  min-width: 0;
+}
+
+.action-buttons .btn-secondary--lg,
+.action-buttons .btn-create {
   height: var(--height-control);
+  gap: var(--spacing-8);
   padding: 0 var(--spacing-24);
+  border-radius: var(--radius-full);
   font-size: var(--text-body);
+  font-weight: 400;
+  letter-spacing: var(--tracking-body);
+  line-height: normal;
 }
 
 .checkbox-label {
@@ -399,19 +419,12 @@ button:focus:not(:focus-visible) {
 /* ---- Primary action (filled pill) ------------------------------------- */
 .btn-create {
   display: inline-flex;
-  height: var(--height-control);
   align-items: center;
   justify-content: center;
-  gap: var(--spacing-8);
-  padding: 0 var(--spacing-24);
   border: 0;
-  border-radius: var(--radius-full);
   background: var(--color-apple-blue);
   color: var(--color-ice);
   cursor: pointer;
-  font-size: var(--text-body);
-  font-weight: 400;
-  letter-spacing: var(--tracking-body);
   white-space: nowrap;
   transition: background-color 0.15s ease;
 }
@@ -420,62 +433,49 @@ button:focus:not(:focus-visible) {
   background: var(--color-apple-blue-hover);
 }
 
-/* ---- Workspace (table panel + processing panel, side by side) ---------- */
-.workspace {
-  display: flex;
-  flex: 1 1 auto;
-  min-height: 0;
-  align-items: stretch;
-  gap: 0;
-  overflow: hidden;
-}
-
-.table-panel,
+/* ---- Processing/actions and workspace ---------------------------------- */
 .processing-panel {
   display: flex;
-  min-width: 280px;
-  flex-direction: column;
-  gap: var(--spacing-12);
-  padding: var(--spacing-16);
-  overflow: hidden;
+  flex: 0 0 auto;
+  align-items: center;
+  min-width: 0;
+  gap: var(--spacing-16);
+  padding: var(--spacing-12) var(--spacing-16);
   border: 1px solid var(--color-hairline);
   border-radius: var(--radius-sm);
   background: var(--surface-elevated);
 }
 
-.table-panel {
-  flex: 3 1 0;
-}
-
-.processing-panel {
-  flex: 1 1 0;
-}
-
-/* Draggable divider between the two panels; lets the user re-balance width. */
-.panel-resizer {
-  flex: 0 0 auto;
-  width: var(--spacing-16);
-  margin: 0 -1px;
+.processing-content {
   display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: col-resize;
-  z-index: 2;
+  flex: 1 1 auto;
+  min-width: 0;
+  flex-direction: column;
+  gap: var(--spacing-8);
 }
 
-.panel-resizer::before {
-  content: '';
-  width: 1px;
-  height: 100%;
-  background: var(--color-hairline);
-  transition: background-color 0.15s ease, width 0.15s ease;
+.workspace {
+  display: grid;
+  flex: 1 1 auto;
+  grid-template-columns: minmax(0, 4fr) minmax(240px, 1fr);
+  min-height: 0;
+  align-items: stretch;
+  gap: 12px;
+  overflow: hidden;
 }
 
-.panel-resizer:hover::before,
-.panel-resizer:focus-visible::before,
-.panel-resizer.is-dragging::before {
-  width: 2px;
-  background: var(--color-apple-blue);
+.table-panel,
+.activity-panel {
+  display: flex;
+  min-width: 0;
+  min-height: 0;
+  flex-direction: column;
+  gap: 12px;
+  padding: 16px;
+  overflow: hidden;
+  border: 1px solid var(--color-hairline);
+  border-radius: var(--radius-sm);
+  background: var(--surface-elevated);
 }
 
 .table-panel-header {
@@ -502,13 +502,15 @@ button:focus:not(:focus-visible) {
   flex-direction: column;
   overflow-x: auto;
   overflow-y: auto;
+  scrollbar-gutter: stable;
   border: 1px solid var(--color-hairline);
   border-radius: var(--radius-sm);
   background: var(--surface-elevated);
 }
 
 table {
-  width: 100%;
+  width: var(--subtitle-grid-min-width);
+  min-width: 100%;
   flex: 0 0 auto;
   table-layout: fixed;
   border-collapse: collapse;
@@ -517,12 +519,15 @@ table {
 
 th,
 td {
-  height: var(--row-h);
-  padding: 0 var(--spacing-16);
+  height: var(--height-table-row);
+  padding: 0 16px;
+  overflow: hidden;
   border-bottom: 1px solid var(--color-hairline);
+  text-overflow: ellipsis;
   vertical-align: middle;
-  font-size: var(--text-body-sm);
-  letter-spacing: var(--tracking-body-sm);
+  font-size: 14px;
+  letter-spacing: -0.224px;
+  white-space: nowrap;
 }
 
 th {
@@ -536,6 +541,13 @@ th {
   letter-spacing: var(--tracking-caption);
 }
 
+th > span:first-child {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 tbody tr:hover {
   background: var(--color-frost);
 }
@@ -545,21 +557,21 @@ tbody tr:last-child td {
 }
 
 .col-id {
-  width: 64px;
+  width: var(--subtitle-column-id);
   color: var(--color-carbon);
   text-align: center;
   font-variant-numeric: tabular-nums;
 }
 
 .col-duration {
-  width: 290px;
+  width: var(--subtitle-column-duration);
   color: var(--color-carbon);
   white-space: nowrap;
   font-variant-numeric: tabular-nums;
 }
 
 .col-text {
-  width: auto;
+  width: var(--subtitle-column-text);
   color: var(--color-carbon);
   white-space: nowrap;
   overflow: hidden;
@@ -567,7 +579,7 @@ tbody tr:last-child td {
 }
 
 .col-speed {
-  width: 88px;
+  width: var(--subtitle-column-speed);
   color: var(--color-carbon);
   white-space: nowrap;
   font-variant-numeric: tabular-nums;
@@ -576,7 +588,7 @@ tbody tr:last-child td {
 /* Speed and Status sit immediately left of Actions. All cells inherit the
    Duration baseline from the shared th/td rule; semantic colors remain. */
 .col-status {
-  width: 120px;
+  width: var(--subtitle-column-status);
   overflow: hidden;
   text-align: center;
   text-overflow: ellipsis;
@@ -601,7 +613,7 @@ tbody tr:last-child td {
 }
 
 .col-action {
-  width: 180px;
+  width: var(--subtitle-column-action);
   text-align: center;
 }
 
@@ -798,6 +810,7 @@ thead th {
 }
 
 .goto-input {
+  appearance: textfield;
   width: 52px;
   height: var(--height-compact);
   padding: 0 var(--spacing-8);
@@ -808,6 +821,12 @@ thead th {
   font-size: var(--text-caption);
   text-align: center;
   font-variant-numeric: tabular-nums;
+}
+
+.goto-input::-webkit-inner-spin-button,
+.goto-input::-webkit-outer-spin-button {
+  margin: 0;
+  -webkit-appearance: none;
 }
 
 .goto-input:hover {
@@ -914,7 +933,7 @@ progress::-moz-progress-bar {
 .btn-clear-log {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
+  gap: 8px;
   height: var(--height-micro);
   padding: 0 var(--spacing-12);
   border: 1px solid var(--color-hairline);
@@ -1002,8 +1021,9 @@ progress::-moz-progress-bar {
 .log-console {
   flex: 1 1 auto;
   min-height: 0;
-  padding: var(--spacing-16);
+  padding: 16px;
   overflow-y: auto;
+  scrollbar-gutter: stable;
   border: 1px solid var(--color-hairline);
   border-radius: var(--radius-sm);
   background: var(--surface-elevated);
@@ -1011,6 +1031,15 @@ progress::-moz-progress-bar {
   font-size: var(--text-caption);
   line-height: 1.6;
   overflow-wrap: anywhere;
+}
+
+.activity-panel .log-header {
+  margin-top: 0;
+}
+
+.activity-panel .log-title {
+  font-size: 14px;
+  letter-spacing: -0.224px;
 }
 
 .log-console .time {
@@ -1033,7 +1062,6 @@ progress::-moz-progress-bar {
 /* ---- Responsive (desktop-first; window minimum is 900×650) ------------- */
 @media (max-width: 1040px) {
   .app-container {
-    padding: var(--spacing-12) var(--spacing-24);
     overflow-y: auto;
   }
 
@@ -1046,47 +1074,39 @@ progress::-moz-progress-bar {
     width: 100%;
   }
 
-  .action-buttons .btn-secondary--lg,
-  .action-buttons .btn-create {
-    flex: 1 1 0;
-  }
-
   .workspace {
-    flex-direction: column;
-    gap: 12px;
+    grid-template-columns: minmax(0, 1fr);
     overflow: visible;
   }
 
-  .table-panel,
-  .processing-panel {
-    flex-basis: auto !important;
-    width: auto !important;
-  }
-
-  /* The desktop split stores a flex width on the table. Once the panels stack,
-     the remaining viewport height is smaller than the Processing panel's
-     minimum and flex-shrink used to collapse Subtitle Segments to its header.
-     Give the grid its own scrollable block instead of letting either panel
-     consume or cover it. */
+  /* Give both grid and log their own scrollable block after the panels stack. */
   .table-panel {
-    flex: 0 0 400px !important;
     min-height: 400px;
   }
 
-  .processing-panel {
-    flex: 0 0 auto;
+  .activity-panel {
     min-height: 320px;
   }
 
-  .panel-resizer {
-    display: none;
+  .processing-panel {
+    align-items: stretch;
+    flex-wrap: wrap;
   }
+
+  .processing-actions {
+    width: 100%;
+  }
+
 }
 
 @media (max-height: 700px) {
+  :root {
+    --height-table-row: var(--height-table-row-condensed);
+  }
+
   .app-container {
-    gap: var(--spacing-12);
-    padding: 12px var(--spacing-24);
+    gap: 8px;
+    padding: 8px 12px;
   }
 
   .app-header {
@@ -1094,12 +1114,13 @@ progress::-moz-progress-bar {
   }
 
   .table-panel,
-  .processing-panel {
-    gap: var(--spacing-8);
-    padding: var(--spacing-12);
+  .activity-panel {
+    gap: 8px;
+    padding: 12px;
   }
 
-  :root {
-    --row-h: 27px;
+  th,
+  td {
+    height: var(--height-table-row);
   }
 }

@@ -37,7 +37,7 @@ function bundleModuleView(manifest) {
   // minimums mirror the native BrowserWindow minimum. Inside MediaForge the
   // iframe is necessarily narrower, so let the existing responsive rules use
   // its real viewport instead of forcing a clipped 900px document.
-  const bridge = `<style nonce="${nonce}">html,body{min-width:0!important;min-height:0!important}#theme-toggle{display:none!important}</style><script nonce="${nonce}">window.mediaForge=parent.mediaForge;window.desktopAPI=parent[${bridgeName}];window.sfxApi=parent[${bridgeName}];</script>`;
+  const bridge = `<style nonce="${nonce}">html,body{min-width:0!important;min-height:0!important}#theme-toggle{display:none!important}</style><script nonce="${nonce}">window.mediaForge=parent.mediaForge;window.desktopAPI=parent[${bridgeName}];window.sfxApi=parent[${bridgeName}];window[${bridgeName}]=parent[${bridgeName}];</script>`;
   return source.replace(/<head([^>]*)>/i, `<head$1><base href="${base}">${bridge}`);
 }
 
@@ -50,6 +50,17 @@ function registerIpcRouter({ getWindow, registry, moduleManager, taskManager, se
   ipcMain.handle(CHANNELS.MODULE_EXECUTE, (_event, request) => {
     if (!request || typeof request.module !== 'string' || typeof request.action !== 'string') throw new TypeError('Invalid module request.');
     return moduleManager.execute(request.module, request.action, request.payload || {});
+  });
+  ipcMain.handle(CHANNELS.MODULE_RESET, async (_event, moduleId) => {
+    const manifest = registry.get(String(moduleId));
+    if (moduleManager.isActive(manifest.id)) {
+      return { reset: false, busy: true, message: 'Cannot reset this module while it is processing.' };
+    }
+    if (!await dialogService.confirmModuleReset()) return { reset: false, cancelled: true };
+    if (moduleManager.isActive(manifest.id)) {
+      return { reset: false, busy: true, message: 'Cannot reset this module while it is processing.' };
+    }
+    return moduleManager.reset(manifest.id);
   });
   ipcMain.handle(CHANNELS.TASKS_LIST, () => taskManager.list());
   ipcMain.handle(CHANNELS.TASK_CANCEL, (_event, taskId) => moduleManager.control(String(taskId), 'cancel'));

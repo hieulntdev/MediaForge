@@ -26,7 +26,7 @@ function validateManifest(manifest, source = 'module.json') {
   }
   if (!/^[a-z0-9-]+\.js$/.test(manifest.adapter)) throw new TypeError(`${source}: invalid adapter.`);
   if (!manifest.ui || typeof manifest.ui.entry !== 'string') throw new TypeError(`${source}: invalid ui entry.`);
-  if (!['biliAPI', 'sfxApi', 'srtAPI'].includes(manifest.ui.bridge)) throw new TypeError(`${source}: invalid UI bridge.`);
+  if (!['biliAPI', 'sfxApi', 'srtAPI', 'hongguoAPI'].includes(manifest.ui.bridge)) throw new TypeError(`${source}: invalid UI bridge.`);
   if (!['light', 'medium', 'heavy'].includes(manifest.resourceClass)) throw new TypeError(`${source}: invalid resourceClass.`);
   return manifest;
 }

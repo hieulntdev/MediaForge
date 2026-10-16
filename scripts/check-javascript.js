@@ -5,14 +5,18 @@ const path = require('node:path');
 const { spawnSync } = require('node:child_process');
 
 const root = path.resolve(__dirname, '..');
-const roots = ['apps', 'backend/mediaforge/modules', 'scripts'];
+const roots = [
+  'apps', 'backend/mediaforge/modules', 'frontend', 'scripts',
+  'Bili-Downloader/electron-app', 'SRT-to-Speech-Studio/electron-app',
+  'SFX-Converter/electron'
+];
 const files = [];
 
 function visit(directory) {
   for (const entry of fs.readdirSync(directory, { withFileTypes: true })) {
     const target = path.join(directory, entry.name);
     if (entry.isDirectory()) visit(target);
-    else if (entry.name.endsWith('.js')) files.push(target);
+    else if (entry.name.endsWith('.js') || entry.name.endsWith('.mjs')) files.push(target);
   }
 }
 

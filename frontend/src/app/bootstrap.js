@@ -1,9 +1,18 @@
 import { applyTheme, initializeTheme, toggleTheme } from '../core/theme.js';
-import { hasActiveModuleTasks } from './navigation-state.mjs';
+import {
+  hasActiveModuleTasks,
+  moduleUsesNavigationLock,
+  shouldBlockModuleNavigation,
+} from './navigation-state.mjs';
 import { moduleIconMarkup } from './module-icons.mjs';
+import { clearAllModuleSessionStorage, clearModuleStorage } from './module-reset.mjs';
 
-const BILI_MODULE_ID = 'bili_downloader';
-const NAVIGATION_BLOCKED_MESSAGE = 'Downloads are in progress. Please wait until all active downloads are finished before switching modules.';
+clearAllModuleSessionStorage();
+
+const NAVIGATION_BLOCKED_MESSAGES = Object.freeze({
+  bili_downloader: 'Downloads are in progress. Please wait until all active downloads are finished before switching modules.',
+  hongguo_downloader: 'Cannot switch modules while Hongguo Downloader is processing.',
+});
 const state = {
   modules: [], filter: '', activeModule: null, health: null,
   tasks: new Map(), moduleFrames: new Map(),
@@ -17,6 +26,7 @@ const elements = {
   appVersion: document.querySelector('#app-version'),
   frameHost: document.querySelector('#module-frame-host'), frame: document.querySelector('#module-frame'),
   backButton: document.querySelector('#back-button'),
+  resetButton: document.querySelector('#reset-module-button'),
   moduleTitle: document.querySelector('#module-view-title'), moduleDescription: document.querySelector('#module-view-description'),
   navigationNotice: document.querySelector('#navigation-notice')
 };
@@ -27,28 +37,41 @@ function displayVersion(version) {
 
 elements.appVersion.textContent = `v${displayVersion(window.mediaForge.appVersion)}`;
 
-function hasActiveBiliDownloads() {
-  return hasActiveModuleTasks(state.tasks, BILI_MODULE_ID);
+function activeModuleLocksNavigation() {
+  const moduleId = state.activeModule?.id;
+  return moduleUsesNavigationLock(moduleId) && hasActiveModuleTasks(state.tasks, moduleId);
+}
+
+function activeModuleIsBusy() {
+  return Boolean(state.activeModule && hasActiveModuleTasks(state.tasks, state.activeModule.id));
 }
 
 let noticeTimer = null;
-function showNavigationBlockedNotice() {
-  if (!elements.navigationNotice.hidden) return;
-  elements.navigationNotice.textContent = NAVIGATION_BLOCKED_MESSAGE;
+function showNotice(message) {
+  elements.navigationNotice.textContent = message;
   elements.navigationNotice.hidden = false;
   clearTimeout(noticeTimer);
   noticeTimer = setTimeout(() => { elements.navigationNotice.hidden = true; }, 4000);
 }
 
+function showNavigationBlockedNotice(moduleId = state.activeModule?.id) {
+  showNotice(NAVIGATION_BLOCKED_MESSAGES[moduleId]
+    || 'This action is unavailable while the module is processing.');
+}
+
 function updateNavigationLock() {
-  const locked = state.activeModule?.id === BILI_MODULE_ID && hasActiveBiliDownloads();
+  const locked = activeModuleLocksNavigation();
   elements.backButton.disabled = locked;
   const dashboardLink = document.querySelector('[data-route="dashboard"]');
   dashboardLink.setAttribute('aria-disabled', String(locked));
   for (const link of elements.moduleNavigation.querySelectorAll('.nav-item')) {
-    const disabled = locked && link.dataset.module !== BILI_MODULE_ID;
+    const disabled = locked && link.dataset.module !== state.activeModule?.id;
     link.setAttribute('aria-disabled', String(disabled));
   }
+  elements.resetButton.disabled = !state.activeModule || activeModuleIsBusy();
+  elements.resetButton.title = activeModuleIsBusy()
+    ? 'Clear is unavailable while this module is processing.'
+    : 'Clear this module and restore its default settings.';
 }
 
 async function refreshTasks() {
@@ -65,17 +88,22 @@ function restoreActiveHash() {
 }
 
 async function navigationIsBlocked(targetModuleId = null) {
-  if (state.activeModule?.id !== BILI_MODULE_ID || targetModuleId === BILI_MODULE_ID) return false;
+  const currentModuleId = state.activeModule?.id;
+  if (!moduleUsesNavigationLock(currentModuleId) || targetModuleId === currentModuleId) return false;
   try {
     await refreshTasks();
   } catch {
-    // Fail closed while leaving Bili: an unavailable snapshot must not be
-    // interpreted as proof that its background work has finished.
-    showNavigationBlockedNotice();
+    // Fail closed while leaving a guarded module: an unavailable snapshot
+    // must not be interpreted as proof that its background work has finished.
+    showNavigationBlockedNotice(currentModuleId);
     return true;
   }
-  if (!hasActiveBiliDownloads()) return false;
-  showNavigationBlockedNotice();
+  if (!shouldBlockModuleNavigation({
+    currentModuleId,
+    targetModuleId,
+    tasks: state.tasks,
+  })) return false;
+  showNavigationBlockedNotice(currentModuleId);
   return true;
 }
 
@@ -107,6 +135,49 @@ function frameFor(module) {
   if (state.moduleFrames.size !== 0) elements.frameHost.append(frame);
   state.moduleFrames.set(module.id, frame);
   return frame;
+}
+
+async function reloadModuleFrame(module) {
+  const current = state.moduleFrames.get(module.id);
+  if (!current) return;
+  const frame = document.createElement('iframe');
+  frame.id = current.id;
+  frame.className = 'module-frame';
+  frame.title = `${module.displayName} module`;
+  frame.hidden = state.activeModule?.id !== module.id;
+  current.replaceWith(frame);
+  if (elements.frame === current) elements.frame = frame;
+  state.moduleFrames.set(module.id, frame);
+  frame.addEventListener('load', updateThemeButton, { once: true });
+  frame.srcdoc = await window.mediaForge.loadModuleView(module.id);
+}
+
+async function resetActiveModule() {
+  const module = state.activeModule;
+  if (!module) return;
+  try {
+    await refreshTasks();
+    if (hasActiveModuleTasks(state.tasks, module.id)) {
+      showNotice('Clear is unavailable while this module is processing.');
+      return;
+    }
+    elements.resetButton.disabled = true;
+    elements.resetButton.setAttribute('aria-busy', 'true');
+    const result = await window.mediaForge.resetModule(module.id);
+    if (!result?.reset) {
+      if (result?.busy) showNotice(result.message || 'Clear is unavailable while this module is processing.');
+      return;
+    }
+    clearModuleStorage(module.id, { includePreferences: true });
+    await refreshTasks();
+    await reloadModuleFrame(module);
+    showNotice(`${module.displayName} was reset to its default state.`);
+  } catch (error) {
+    showNotice(error.message || 'Unable to reset this module.');
+  } finally {
+    elements.resetButton.removeAttribute('aria-busy');
+    updateNavigationLock();
+  }
 }
 
 function moduleRow(module) {
@@ -169,8 +240,8 @@ async function openModule(module) {
   const frame = frameFor(module);
   frame.hidden = false;
   if (!frame.hasAttribute('srcdoc')) {
-    frame.srcdoc = await window.mediaForge.loadModuleView(module.id);
     frame.addEventListener('load', updateThemeButton, { once: true });
+    frame.srcdoc = await window.mediaForge.loadModuleView(module.id);
   }
   setNavigation(module.id);
   history.replaceState(null, '', `#/modules/${module.frontendRoute}`);
@@ -212,6 +283,7 @@ async function loadHealth() {
 initializeTheme(); updateThemeButton(); updateClock(); setInterval(updateClock, 1000);
 elements.themeToggle.addEventListener('click', () => { toggleTheme(); updateThemeButton(); });
 elements.backButton.addEventListener('click', () => { void showDashboard(); });
+elements.resetButton.addEventListener('click', () => { void resetActiveModule(); });
 document.querySelector('[data-route="dashboard"]').addEventListener('click', (event) => { event.preventDefault(); void showDashboard(); });
 document.querySelector('.brand').addEventListener('click', (event) => { event.preventDefault(); void showDashboard(); });
 for (const input of [elements.moduleSearch, elements.globalSearch]) {
@@ -243,10 +315,17 @@ try {
   await refreshTasks();
   renderNavigation(); renderModules();
   const route = location.hash.match(/^#\/modules\/(.+)$/)?.[1];
-  const activeBiliModule = hasActiveBiliDownloads()
-    ? state.modules.find((item) => item.id === BILI_MODULE_ID)
-    : null;
-  const module = activeBiliModule || state.modules.find((item) => item.frontendRoute === route);
+  const routedModule = state.modules.find((item) => item.frontendRoute === route);
+  const activeLockedModule = (
+    routedModule
+    && moduleUsesNavigationLock(routedModule.id)
+    && hasActiveModuleTasks(state.tasks, routedModule.id)
+      ? routedModule
+      : state.modules.find((item) => (
+        moduleUsesNavigationLock(item.id) && hasActiveModuleTasks(state.tasks, item.id)
+      ))
+  );
+  const module = activeLockedModule || routedModule;
   if (module) await openModule(module); else await showDashboard();
   void loadHealth();
 } catch (error) {

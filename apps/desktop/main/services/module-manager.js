@@ -40,6 +40,24 @@ class ModuleManager extends EventEmitter {
     return adapter[operation](taskId);
   }
 
+  isActive(moduleId) {
+    if (this.taskManager.activeForModule(moduleId).length > 0) return true;
+    return Boolean(this.adapters.get(moduleId)?.isBusy?.());
+  }
+
+  async reset(moduleId) {
+    this.registry.get(moduleId);
+    if (this.isActive(moduleId)) throw new Error('Cannot reset this module while it is processing.');
+    const adapter = this.adapter(moduleId);
+    if (typeof adapter.resetToDefaults !== 'function') {
+      throw new Error(`${moduleId} does not support reset to defaults.`);
+    }
+    const result = await adapter.resetToDefaults();
+    if (this.isActive(moduleId)) throw new Error('Cannot reset this module while it is processing.');
+    const clearedTasks = this.taskManager.clearModule(moduleId);
+    return { reset: true, clearedTasks, ...(result || {}) };
+  }
+
   async shutdown() {
     await Promise.all([...this.adapters.values()].map((adapter) => adapter.shutdown?.()));
   }

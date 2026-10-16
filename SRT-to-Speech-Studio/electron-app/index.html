@@ -133,6 +133,47 @@
       </p>
     </section>
 
+    <section class="processing-panel" id="processing-panel" aria-label="Processing and actions">
+      <div class="processing-content">
+        <div class="processing-header">
+          <h2 class="panel-title">Processing</h2>
+          <div class="elapsed-wrap">
+            <span class="elapsed-label">Elapsed time:</span>
+            <span class="elapsed-value" id="elapsed-time">00:00:00</span>
+          </div>
+        </div>
+
+        <div class="progress-info">
+          <span class="status-text" id="status-text" role="status" aria-live="polite">Ready</span>
+          <span class="progress-percent" id="progress-percent"></span>
+        </div>
+        <progress id="progress" max="100" value="0" aria-label="Synthesis progress">0%</progress>
+      </div>
+
+      <div class="processing-actions">
+        <button class="btn-secondary" id="save-button" type="button" disabled>
+          <svg aria-hidden="true" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M5 4h11l3 3v13H5z"/>
+            <path d="M8 4v6h8V4M8 20v-6h8v6"/>
+          </svg>
+          <span>Save Project</span>
+        </button>
+        <button class="btn-secondary" id="retry-button" type="button" disabled>
+          <svg aria-hidden="true" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M20 12a8 8 0 1 1-2.34-5.66"/>
+            <path d="M20 4v4h-4"/>
+          </svg>
+          <span>Retry Failed</span>
+        </button>
+        <button class="btn-danger" id="cancel-button" type="button" disabled>
+          <svg aria-hidden="true" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round">
+            <path d="M6 6l12 12M18 6L6 18"/>
+          </svg>
+          <span>Cancel</span>
+        </button>
+      </div>
+    </section>
+
     <div class="workspace" id="workspace">
       <section class="table-panel" id="table-panel" aria-label="Subtitle content">
         <div class="table-panel-header">
@@ -156,12 +197,12 @@
           <table>
             <thead id="table-head">
               <tr>
-                <th class="col-id" scope="col">ID</th>
-                <th class="col-duration" scope="col">Duration</th>
-                <th class="col-text" scope="col">Text Content</th>
-                <th class="col-speed" scope="col">Speed</th>
-                <th class="col-status" scope="col">Status</th>
-                <th class="col-action" scope="col">Actions</th>
+                <th class="col-id" scope="col"><span>ID</span></th>
+                <th class="col-duration" scope="col"><span>Duration</span></th>
+                <th class="col-text" scope="col"><span>Text Content</span></th>
+                <th class="col-speed" scope="col"><span>Speed</span></th>
+                <th class="col-status" scope="col"><span>Status</span></th>
+                <th class="col-action" scope="col"><span>Actions</span></th>
               </tr>
             </thead>
             <tbody id="subtitle-rows"></tbody>
@@ -191,31 +232,15 @@
           <nav class="pagination" id="pagination" aria-label="Subtitle pagination"></nav>
           <div class="goto-wrap">
             <label for="goto-page-input">Go to</label>
-            <input class="goto-input" id="goto-page-input" type="number" min="1" value="1" inputmode="numeric">
+            <input class="goto-input" id="goto-page-input" type="number" min="1" step="1" value="1" inputmode="numeric">
             <span class="goto-total" id="goto-page-total">/ 1</span>
           </div>
         </div>
       </section>
 
-      <div class="panel-resizer" id="panel-resizer" role="separator" aria-orientation="vertical" aria-label="Resize panels" tabindex="0"></div>
-
-      <section class="processing-panel" id="processing-panel" aria-label="Processing">
-        <div class="processing-header">
-          <h2 class="panel-title">Processing</h2>
-          <div class="elapsed-wrap">
-            <span class="elapsed-label">Elapsed time:</span>
-            <span class="elapsed-value" id="elapsed-time">00:00:00</span>
-          </div>
-        </div>
-
-        <div class="progress-info">
-          <span class="status-text" id="status-text" role="status" aria-live="polite">Ready</span>
-          <span class="progress-percent" id="progress-percent"></span>
-        </div>
-        <progress id="progress" max="100" value="0" aria-label="Synthesis progress">0%</progress>
-
+      <aside class="activity-panel" id="activity-panel" aria-labelledby="log-title">
         <div class="log-header">
-          <h3 class="log-title" id="log-title">Activity Log</h3>
+          <h2 class="log-title" id="log-title">Activity Log</h2>
           <button class="btn-clear-log" id="clear-log-button" type="button">
             <svg aria-hidden="true" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
               <path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13"/>
@@ -226,30 +251,7 @@
         <div class="log-console" id="log-console" role="log" aria-live="polite">
           <div><span class="time">[--:--:--]</span> — <span class="info">System Ready</span></div>
         </div>
-
-        <div class="processing-actions">
-          <button class="btn-secondary" id="save-button" type="button" disabled>
-            <svg aria-hidden="true" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M5 4h11l3 3v13H5z"/>
-              <path d="M8 4v6h8V4M8 20v-6h8v6"/>
-            </svg>
-            <span>Save Project</span>
-          </button>
-          <button class="btn-secondary" id="retry-button" type="button" disabled>
-            <svg aria-hidden="true" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M20 12a8 8 0 1 1-2.34-5.66"/>
-              <path d="M20 4v4h-4"/>
-            </svg>
-            <span>Retry Failed</span>
-          </button>
-          <button class="btn-danger" id="cancel-button" type="button" disabled>
-            <svg aria-hidden="true" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round">
-              <path d="M6 6l12 12M18 6L6 18"/>
-            </svg>
-            <span>Cancel</span>
-          </button>
-        </div>
-      </section>
+      </aside>
     </div>
     <button class="theme-toggle" id="theme-toggle" type="button" hidden aria-label="Switch to dark mode"></button>
   </main>

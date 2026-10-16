@@ -1,16 +1,10 @@
 const MAX_LOG_ROWS = 500;
 const AUTO_PAGE_SIZE = 'auto';
 const THEME_STORAGE_KEY = 'bilibili-downloader:theme';
-const SPLIT_STORAGE_KEY = 'bilibili-downloader:activity-panel-ratio';
-const COLUMN_STORAGE_KEY = 'bilibili-downloader:column-widths';
 const UI_STATE_STORAGE_KEY = 'bilibili-downloader:ui-state-v2';
-const COLUMN_DEFINITIONS = Object.freeze({
-  id: { width: 64, min: 56 },
-  link: { width: 280, min: 160 },
-  detail: { width: 290, min: 180 },
-  status: { width: 120, min: 104 },
-  speed: { width: 120, min: 104 },
-  action: { width: 160, min: 144 },
+const STATUS_FILTER_LABELS = Object.freeze({
+  all: 'All', queued: 'Queued', downloading: 'Downloading', processing: 'Processing',
+  completed: 'Completed', failed: 'Failed', cancelled: 'Cancelled',
 });
 
 const state = {
@@ -19,6 +13,7 @@ const state = {
   page: 1,
   pageSize: AUTO_PAGE_SIZE,
   autoPageSize: 1,
+  statusFilter: 'all',
   linksFile: '',
   outputDir: '',
   cookiesFile: '',
@@ -51,18 +46,17 @@ const elements = {
   tableBody: document.querySelector('#table-body'),
   emptyState: document.querySelector('#empty-state'),
   pagination: document.querySelector('#pagination'),
+  downloadsTitle: document.querySelector('#downloads-title'),
+  statusFilter: document.querySelector('#status-filter'),
   pageSizeSelect: document.querySelector('#page-size-select'),
   gotoInput: document.querySelector('#goto-input'),
   pageTotal: document.querySelector('#page-total'),
-  mainSplit: document.querySelector('#main-split'),
-  splitDivider: document.querySelector('#split-divider'),
   checkAccountButton: document.querySelector('#check-account-button'),
   log: document.querySelector('#log'),
   clearLogButton: document.querySelector('#clear-log-button'),
   themeToggle: document.querySelector('#theme-toggle'),
   tableScroll: document.querySelector('.table-scroll'),
   progressStatus: document.querySelector('#progress-status'),
-  downloadTable: document.querySelector('.download-table'),
 };
 
 /* ---- theme ---- */
@@ -285,14 +279,27 @@ function effectivePageSize() {
     : state.pageSize;
 }
 
-function pageCount() {
-  return Math.max(1, Math.ceil(state.items.length / effectivePageSize()));
+function normalizedDownloadStatus(status) {
+  const value = String(status || 'Queued').toLowerCase();
+  return value === 'done' ? 'completed' : value;
 }
 
-function renderRows() {
+function filteredItems() {
+  if (state.statusFilter === 'all') return state.items;
+  return state.items.filter((item) => {
+    const rowStatus = state.rowState.get(item.row)?.status || 'Queued';
+    return normalizedDownloadStatus(rowStatus) === state.statusFilter;
+  });
+}
+
+function pageCount(items = filteredItems()) {
+  return Math.max(1, Math.ceil(items.length / effectivePageSize()));
+}
+
+function renderRows(items) {
   const size = effectivePageSize();
   const start = (state.page - 1) * size;
-  const pageItems = state.items.slice(start, start + size);
+  const pageItems = items.slice(start, start + size);
   elements.tableBody.replaceChildren();
   for (const item of pageItems) {
     const tr = rowFor(item);
@@ -306,8 +313,18 @@ function renderRow(row) {
   if (tr) applyRowStatus(tr, row);
 }
 
-function renderEmptyState() {
-  elements.emptyState.hidden = state.items.length !== 0;
+function renderEmptyState(items) {
+  if (state.items.length === 0) {
+    elements.emptyState.textContent = 'Select a link list file, then start the download.';
+    elements.emptyState.hidden = false;
+    return;
+  }
+  if (items.length === 0) {
+    elements.emptyState.textContent = `No downloads with Status "${STATUS_FILTER_LABELS[state.statusFilter]}".`;
+    elements.emptyState.hidden = false;
+    return;
+  }
+  elements.emptyState.hidden = true;
 }
 
 function pageButton(label, target, options = {}) {
@@ -316,14 +333,14 @@ function pageButton(label, target, options = {}) {
   button.className = `page-btn${options.active ? ' active' : ''}`;
   button.textContent = label;
   button.disabled = Boolean(options.disabled);
-  if (options.ariaLabel) button.setAttribute('aria-label', options.ariaLabel);
+  button.setAttribute('aria-label', options.ariaLabel || `Page ${label}`);
   if (options.active) button.setAttribute('aria-current', 'page');
   button.addEventListener('click', () => { state.page = target; render(); });
   return button;
 }
 
-function renderPagination() {
-  const count = pageCount();
+function renderPagination(items) {
+  const count = pageCount(items);
   state.page = Math.min(Math.max(1, state.page), count);
   elements.pagination.replaceChildren();
   elements.pagination.append(
@@ -331,14 +348,23 @@ function renderPagination() {
     pageButton('‹', state.page - 1, { disabled: state.page === 1, ariaLabel: 'Previous page' }),
   );
   const first = Math.max(1, Math.min(state.page - 2, count - 4));
-  for (let p = first; p <= Math.min(count, first + 4); p += 1) {
+  const last = Math.min(count, first + 4);
+  if (first > 1) {
+    elements.pagination.append(pageButton('1', 1));
+    if (first > 2) elements.pagination.append(pageEllipsis());
+  }
+  for (let p = first; p <= last; p += 1) {
     elements.pagination.append(pageButton(String(p), p, {
       active: p === state.page,
       ariaLabel: p === state.page ? `Page ${p}, current page` : `Go to page ${p}`,
     }));
   }
+  if (last < count) {
+    if (last < count - 1) elements.pagination.append(pageEllipsis());
+    elements.pagination.append(pageButton(String(count), count));
+  }
   elements.pagination.append(
-    pageButton('›', state.page + 1, { disabled: state.page === count, ariaLabel: 'Next page' }),
+    pageButton('›', Math.min(count, state.page + 1), { disabled: state.page === count, ariaLabel: 'Next page' }),
     pageButton('»', count, { disabled: state.page === count, ariaLabel: 'Last page' }),
   );
   elements.pageSizeSelect.value = String(state.pageSize);
@@ -347,6 +373,14 @@ function renderPagination() {
   if (document.activeElement !== elements.gotoInput) {
     elements.gotoInput.value = String(state.page);
   }
+}
+
+function pageEllipsis() {
+  const span = document.createElement('span');
+  span.className = 'page-ellipsis';
+  span.textContent = '…';
+  span.setAttribute('aria-hidden', 'true');
+  return span;
 }
 
 function updateAutoPageSize() {
@@ -360,201 +394,8 @@ function updateAutoPageSize() {
   const nextSize = Math.max(1, Math.floor((elements.tableScroll.clientHeight - headerHeight) / rowHeight));
   if (nextSize === state.autoPageSize) return;
   state.autoPageSize = nextSize;
-  state.page = Math.min(state.page, pageCount());
-  renderRows();
-  renderPagination();
+  render();
 }
-
-/* ---- resizable download columns ---- */
-function loadColumnWidths() {
-  const widths = Object.fromEntries(
-    Object.entries(COLUMN_DEFINITIONS).map(([key, definition]) => [key, definition.width]),
-  );
-  try {
-    const saved = JSON.parse(localStorage.getItem(COLUMN_STORAGE_KEY) || '{}');
-    for (const [key, definition] of Object.entries(COLUMN_DEFINITIONS)) {
-      const width = Number(saved[key]);
-      if (Number.isFinite(width)) widths[key] = Math.max(definition.min, Math.round(width));
-    }
-  } catch (_) {
-    /* Default widths remain available when preference storage is unavailable. */
-  }
-  return widths;
-}
-
-const columnWidths = loadColumnWidths();
-
-function applyColumnWidths({ persist = false } = {}) {
-  let total = 0;
-  for (const [key, definition] of Object.entries(COLUMN_DEFINITIONS)) {
-    columnWidths[key] = Math.max(definition.min, Math.round(columnWidths[key]));
-    document.documentElement.style.setProperty(`--column-${key}-width`, `${columnWidths[key]}px`);
-    const handle = elements.downloadTable.querySelector(`th[data-column="${key}"] .column-resizer`);
-    if (handle) handle.setAttribute('aria-valuenow', String(columnWidths[key]));
-    total += columnWidths[key];
-  }
-  document.documentElement.style.setProperty('--download-table-width', `${total}px`);
-  if (persist) {
-    try {
-      localStorage.setItem(COLUMN_STORAGE_KEY, JSON.stringify(columnWidths));
-    } catch (_) {
-      /* The current resize still works if preference storage is unavailable. */
-    }
-  }
-}
-
-function installColumnResizers() {
-  for (const header of elements.downloadTable.querySelectorAll('th[data-column]')) {
-    const key = header.dataset.column;
-    const handle = document.createElement('span');
-    handle.className = 'column-resizer';
-    handle.tabIndex = 0;
-    handle.setAttribute('role', 'separator');
-    handle.setAttribute('aria-orientation', 'vertical');
-    handle.setAttribute('aria-label', `Resize ${header.textContent.trim()} column`);
-    handle.setAttribute('aria-valuemin', String(COLUMN_DEFINITIONS[key].min));
-    handle.title = 'Drag or use arrow keys to resize';
-    let drag = null;
-    handle.addEventListener('pointerdown', (event) => {
-      if (event.button !== 0) return;
-      drag = { x: event.clientX, width: columnWidths[key] };
-      handle.classList.add('is-dragging');
-      handle.setPointerCapture(event.pointerId);
-      event.preventDefault();
-    });
-    handle.addEventListener('pointermove', (event) => {
-      if (!drag) return;
-      columnWidths[key] = Math.max(COLUMN_DEFINITIONS[key].min, drag.width + event.clientX - drag.x);
-      applyColumnWidths();
-    });
-    const finish = (event) => {
-      if (!drag) return;
-      drag = null;
-      handle.classList.remove('is-dragging');
-      if (handle.hasPointerCapture(event.pointerId)) handle.releasePointerCapture(event.pointerId);
-      applyColumnWidths({ persist: true });
-    };
-    handle.addEventListener('pointerup', finish);
-    handle.addEventListener('pointercancel', finish);
-    handle.addEventListener('keydown', (event) => {
-      if (!['ArrowLeft', 'ArrowRight'].includes(event.key)) return;
-      const delta = event.key === 'ArrowLeft' ? -8 : 8;
-      columnWidths[key] = Math.max(COLUMN_DEFINITIONS[key].min, columnWidths[key] + delta);
-      applyColumnWidths({ persist: true });
-      event.preventDefault();
-    });
-    handle.addEventListener('dblclick', () => {
-      columnWidths[key] = COLUMN_DEFINITIONS[key].width;
-      applyColumnWidths({ persist: true });
-    });
-    header.append(handle);
-  }
-  applyColumnWidths();
-}
-
-/* ---- splitter (table <-> activity log) ---- */
-const DEFAULT_SIDE_RATIO = 0.25;
-const PANEL_MIN_WIDTH = 320;
-const SPLITTER_WIDTH = 16;
-
-function savedSideRatio() {
-  try {
-    const value = Number.parseFloat(localStorage.getItem(SPLIT_STORAGE_KEY));
-    return Number.isFinite(value) ? value : DEFAULT_SIDE_RATIO;
-  } catch (_) {
-    return DEFAULT_SIDE_RATIO;
-  }
-}
-
-let sideRatio = savedSideRatio();
-
-function applySideRatio({ persist = false } = {}) {
-  if (window.matchMedia('(max-width: 1040px)').matches) return;
-  const available = elements.mainSplit.clientWidth - SPLITTER_WIDTH;
-  if (available <= 0) return;
-  const minimum = Math.min(0.5, PANEL_MIN_WIDTH / available);
-  const maximum = Math.max(0.5, 1 - (PANEL_MIN_WIDTH / available));
-  const appliedRatio = Math.min(Math.max(sideRatio, minimum), maximum);
-  document.documentElement.style.setProperty('--side-width', `${Math.round(available * appliedRatio)}px`);
-  elements.splitDivider.setAttribute('aria-valuenow', String(Math.round(appliedRatio * 100)));
-  if (persist) {
-    sideRatio = appliedRatio;
-    try {
-      localStorage.setItem(SPLIT_STORAGE_KEY, String(sideRatio));
-    } catch (_) {
-      /* Resizing still works when preference storage is unavailable. */
-    }
-  }
-}
-
-function setSideWidth(width, { persist = false } = {}) {
-  const available = elements.mainSplit.clientWidth - SPLITTER_WIDTH;
-  if (available <= 0) return;
-  sideRatio = width / available;
-  applySideRatio({ persist });
-}
-
-let splitDragging = false;
-
-elements.splitDivider.addEventListener('pointerdown', (event) => {
-  if (event.button !== 0) return;
-  splitDragging = true;
-  elements.splitDivider.classList.add('is-dragging');
-  try {
-    elements.splitDivider.setPointerCapture(event.pointerId);
-  } catch {
-    /* The pointer is already gone; pointermove on the divider still drives the drag. */
-  }
-  event.preventDefault();
-});
-
-elements.splitDivider.addEventListener('pointermove', (event) => {
-  if (!splitDragging) return;
-  const rect = elements.mainSplit.getBoundingClientRect();
-  setSideWidth(rect.right - event.clientX, { persist: true });
-});
-
-function endSplitDrag(event) {
-  if (!splitDragging) return;
-  splitDragging = false;
-  elements.splitDivider.classList.remove('is-dragging');
-  try {
-    if (elements.splitDivider.hasPointerCapture(event.pointerId)) {
-      elements.splitDivider.releasePointerCapture(event.pointerId);
-    }
-  } catch {
-    /* Capture was never taken. */
-  }
-}
-
-elements.splitDivider.addEventListener('pointerup', endSplitDrag);
-elements.splitDivider.addEventListener('pointercancel', endSplitDrag);
-
-elements.splitDivider.addEventListener('keydown', (event) => {
-  const currentWidth = (elements.mainSplit.clientWidth - SPLITTER_WIDTH) * sideRatio;
-  if (event.key === 'ArrowLeft') {
-    setSideWidth(currentWidth + 24, { persist: true });
-  } else if (event.key === 'ArrowRight') {
-    setSideWidth(currentWidth - 24, { persist: true });
-  } else {
-    return;
-  }
-  event.preventDefault();
-});
-
-/* Double-click restores the proportional default. */
-elements.splitDivider.addEventListener('dblclick', () => {
-  sideRatio = DEFAULT_SIDE_RATIO;
-  try {
-    localStorage.removeItem(SPLIT_STORAGE_KEY);
-  } catch (_) {
-    /* The in-memory default still applies when storage is unavailable. */
-  }
-  applySideRatio();
-});
-
-/* Keep the panel inside its bounds when the window itself is resized. */
-window.addEventListener('resize', applySideRatio);
 
 /* ---- account ---- */
 function accountStatusLabel() {
@@ -580,6 +421,7 @@ function persistUIState() {
       rowState: [...state.rowState.entries()],
       page: state.page,
       pageSize: state.pageSize,
+      statusFilter: state.statusFilter,
       linksFile: state.linksFile,
       outputDir: state.outputDir,
       cookiesFile: state.cookiesFile,
@@ -609,6 +451,7 @@ function restoreCachedUI() {
     state.page = Math.max(1, Number(saved.page) || 1);
     state.pageSize = saved.pageSize === AUTO_PAGE_SIZE
       ? AUTO_PAGE_SIZE : (Number(saved.pageSize) || AUTO_PAGE_SIZE);
+    state.statusFilter = STATUS_FILTER_LABELS[saved.statusFilter] ? saved.statusFilter : 'all';
     state.linksFile = saved.linksFile || '';
     state.outputDir = saved.outputDir || '';
     state.cookiesFile = saved.cookiesFile || '';
@@ -706,9 +549,15 @@ function refreshControls() {
 }
 
 function render() {
-  renderRows();
-  renderPagination();
-  renderEmptyState();
+  const items = filteredItems();
+  state.page = Math.min(Math.max(1, state.page), pageCount(items));
+  elements.downloadsTitle.textContent = state.statusFilter === 'all'
+    ? `Downloads (${state.items.length} total)`
+    : `Downloads (${items.length} of ${state.items.length})`;
+  elements.statusFilter.value = state.statusFilter;
+  renderRows(items);
+  renderPagination(items);
+  renderEmptyState(items);
   updateOverall();
   refreshControls();
   renderPauseButton();
@@ -738,6 +587,7 @@ function retryRow(row) {
 /* ---- backend events ---- */
 function onProgress(event) {
   const row = event.row;
+  const previousStatus = normalizedDownloadStatus(state.rowState.get(row)?.status);
   if (state.activeRow !== row) {
     state.activeRow = row;
     state.activeFraction = 0;
@@ -752,8 +602,12 @@ function onProgress(event) {
     state.eta = '';
     state.rowState.set(row, { status: 'Processing', detail: 'Processing…', speed: 0 });
   }
-  renderRow(row);
-  updateOverall();
+  const nextStatus = normalizedDownloadStatus(state.rowState.get(row)?.status);
+  if (previousStatus !== nextStatus) render();
+  else {
+    renderRow(row);
+    updateOverall();
+  }
 }
 
 function logRow(row, status, detail, timestamp = Date.now()) {
@@ -773,14 +627,18 @@ function logRow(row, status, detail, timestamp = Date.now()) {
 
 function onRowUpdate(event) {
   const row = event.row;
+  const previousStatus = normalizedDownloadStatus(state.rowState.get(row)?.status);
   state.rowState.set(row, { status: event.status, detail: event.detail || '', speed: 0 });
   if (row === state.activeRow && ['Done', 'Completed', 'Failed', 'Cancelled'].includes(event.status)) {
     state.activeRow = null;
     state.activeFraction = 0;
   }
   logRow(row, event.status, event.detail, event.snapshotTimestamp || Date.now());
-  renderRow(row);
-  updateOverall();
+  if (previousStatus !== normalizedDownloadStatus(event.status)) render();
+  else {
+    renderRow(row);
+    updateOverall();
+  }
 }
 
 function applyBackendEvent(event) {
@@ -980,6 +838,12 @@ elements.pageSizeSelect.addEventListener('change', () => {
   updateAutoPageSize();
 });
 
+elements.statusFilter.addEventListener('change', () => {
+  state.statusFilter = elements.statusFilter.value;
+  state.page = 1;
+  render();
+});
+
 function commitGotoPage() {
   const count = pageCount();
   const requested = Number.parseInt(elements.gotoInput.value, 10);
@@ -989,8 +853,31 @@ function commitGotoPage() {
   render();
 }
 
+function sanitizeGotoPageInput() {
+  if (elements.gotoInput.value && !/^\d+$/.test(elements.gotoInput.value)) {
+    elements.gotoInput.value = '';
+  }
+}
+
+function preventInvalidGotoInsertion(event) {
+  const insertedText = event.data
+    ?? event.clipboardData?.getData('text')
+    ?? event.dataTransfer?.getData('text')
+    ?? '';
+  if (/\D/.test(insertedText)) event.preventDefault();
+}
+
+elements.gotoInput.addEventListener('beforeinput', preventInvalidGotoInsertion);
+elements.gotoInput.addEventListener('paste', preventInvalidGotoInsertion);
+elements.gotoInput.addEventListener('drop', preventInvalidGotoInsertion);
+elements.gotoInput.addEventListener('input', sanitizeGotoPageInput);
 elements.gotoInput.addEventListener('change', commitGotoPage);
 elements.gotoInput.addEventListener('keydown', (event) => {
+  if (!event.ctrlKey && !event.metaKey && !event.altKey
+      && ['e', 'E', '+', '-', '.', ','].includes(event.key)) {
+    event.preventDefault();
+    return;
+  }
   if (event.key === 'Enter') {
     event.preventDefault();
     commitGotoPage();
@@ -1016,8 +903,6 @@ async function initialize() {
   renderSelectedPaths();
   renderLogs();
   applyTheme(currentTheme());
-  applySideRatio();
-  installColumnResizers();
   render();
   updateAutoPageSize();
 

@@ -2,6 +2,7 @@
 
 const crypto = require('node:crypto');
 const { EventEmitter } = require('node:events');
+const fs = require('node:fs');
 const { TASK_STATES, TERMINAL_STATES, redactSecrets } = require('../../shared/protocol');
 
 const TRANSITIONS = Object.freeze({
@@ -53,7 +54,21 @@ class TaskManager extends EventEmitter {
 
   list() { return [...this.tasks.values()].map((task) => structuredClone(task)); }
   active() { return [...this.tasks.values()].filter((task) => !TERMINAL_STATES.has(task.state)); }
+  activeForModule(moduleId) { return this.active().filter((task) => task.module === moduleId); }
   hasActiveResource(resourceClass) { return this.active().some((task) => task.resourceClass === resourceClass); }
+
+  clearModule(moduleId) {
+    if (this.activeForModule(moduleId).length) throw new Error('Cannot clear tasks while the module is processing.');
+    let cleared = 0;
+    for (const [taskId, task] of this.tasks) {
+      if (task.module !== moduleId) continue;
+      const workspace = this.pathService.taskWorkspace(taskId);
+      fs.rmSync(workspace, { recursive: true, force: true });
+      this.tasks.delete(taskId);
+      cleared += 1;
+    }
+    return cleared;
+  }
 
   transition(taskId, state, { stage, error } = {}) {
     if (!TASK_STATES.includes(state)) throw new TypeError(`Invalid task state: ${state}`);

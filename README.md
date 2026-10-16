@@ -1,7 +1,7 @@
 # MediaForge
 
 MediaForge is a macOS Apple Silicon desktop application that hosts Bili
-Downloader, SFX Converter, and SRT-to-Speech in one Electron window. Modules
+Downloader, Hongguo Downloader, SFX Converter, and SRT-to-Speech in one Electron window. Modules
 are discovered from manifests instead of being hard-coded into the desktop
 shell.
 
@@ -20,6 +20,7 @@ npm ci
 npm run bootstrap:runtimes
 npm run health
 npm run check
+npm test
 npm start
 ```
 
@@ -54,6 +55,10 @@ renderer assets. Their standalone launchers are also retained as documented
 compatibility entry points until real-media parity validation and release
 cutover are complete.
 
+Hongguo Downloader is implemented directly inside its module boundary. It
+extracts public `hongguoapp.cn` series/player metadata and uses the shared
+process lifecycle for FFmpeg remuxing and FFprobe output verification.
+
 ## Architecture
 
 The Electron main process owns filesystem access, dialogs, settings, process
@@ -73,6 +78,7 @@ ownership, and runtime policy.
 
 - `npm start` launches the unified Electron 44.4.5 shell.
 - `npm run check` syntax-checks all unified JavaScript.
+- `npm test` verifies session cleanup boundaries and persistent-data protection.
 - `npm run health` validates all module manifests, four runtimes, FFmpeg, and
   FFprobe.
 - `npm run bootstrap:runtimes` recreates environments from reviewed lock

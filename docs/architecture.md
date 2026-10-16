@@ -19,7 +19,7 @@ Dashboard renderer
 - `backend/mediaforge/modules`: module manifests, public boundary, and Electron adapters.
 - Legacy project directories: source-of-truth domain logic retained by move-first migration.
 
-Legacy renderer assets are bundled at the IPC boundary into a nonce-authorized `srcdoc`. Each manifest selects exactly one compatibility bridge, so Bili and SRT backend event streams cannot cross. This is transitional UI reuse, not a second Electron window.
+Renderer assets are bundled at the IPC boundary into a nonce-authorized `srcdoc`. Each manifest selects exactly one compatibility bridge, so module event streams cannot cross. Legacy modules use this boundary for transitional UI reuse; Hongguo Downloader uses the same boundary with a module-owned renderer. No module opens a second Electron window.
 
 ## Runtime policy
 
@@ -31,4 +31,6 @@ FFmpeg and FFprobe are shared system dependencies resolved through one locator a
 
 Tasks use canonical lifecycle states and module-owned stages. Logs are bounded and secret-redacted. Output is described through artifact records with provenance and ownership. Only one heavy ML action may run at a time; status, preview, and cancellation actions remain available.
 
-MediaForge owns config, logs, cache, models, temp, tasks, and outputs below Electron `userData`. Existing legacy data is read/copied when required and is never destructively migrated. SRT retry journals persist until the explicit clear action. SFX model downloads use a shared model directory, pinned revision/checksums, partial-download semantics, and explicit status/prefetch actions.
+MediaForge owns config, logs, cache, models, temp, tasks, and outputs below Electron `userData`. Existing legacy data is read/copied when required and is never destructively migrated. SRT retry journals live in the app-owned session cache, so retries work within a launch without reviving interrupted work after restart. SFX model downloads use a shared model directory, pinned revision/checksums, partial-download semantics, and explicit status/prefetch actions.
+
+At application startup, `GlobalSessionCleanup` resets shared scratch directories and invokes the cleanup handler registered by every discovered module. Browser storage is cleaned by explicit namespaced keys; the application never clears an origin's entire `localStorage` or IndexedDB. Module settings remain under `config`, model assets remain under `models`, and user outputs are never cleanup targets. The shared module header reset is a separate idle-only lifecycle: it confirms with the user, invokes the current adapter's `resetToDefaults()`, clears that module's terminal tasks and renderer preferences, then recreates only that module frame.

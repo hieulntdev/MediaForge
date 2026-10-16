@@ -1,4 +1,5 @@
 export const TERMINAL_TASK_STATES = new Set(['COMPLETED', 'FAILED', 'CANCELLED']);
+export const NAVIGATION_LOCK_MODULE_IDS = new Set(['bili_downloader', 'hongguo_downloader']);
 
 export function hasActiveModuleTasks(tasks, moduleId) {
   const values = tasks instanceof Map ? tasks.values() : tasks;
@@ -7,8 +8,12 @@ export function hasActiveModuleTasks(tasks, moduleId) {
   ));
 }
 
+export function moduleUsesNavigationLock(moduleId) {
+  return NAVIGATION_LOCK_MODULE_IDS.has(moduleId);
+}
+
 export function shouldBlockModuleNavigation({ currentModuleId, targetModuleId, tasks, snapshotAvailable = true }) {
-  if (currentModuleId !== 'bili_downloader' || targetModuleId === currentModuleId) return false;
+  if (!moduleUsesNavigationLock(currentModuleId) || targetModuleId === currentModuleId) return false;
   if (!snapshotAvailable) return true;
   return hasActiveModuleTasks(tasks, currentModuleId);
 }

@@ -4,6 +4,7 @@ module.exports = Object.freeze({
   MODULES_LIST: 'mediaforge:modules:list',
   MODULE_VIEW: 'mediaforge:modules:view',
   MODULE_EXECUTE: 'mediaforge:module:execute',
+  MODULE_RESET: 'mediaforge:module:reset',
   MODULE_EVENT: 'mediaforge:module:event',
   TASKS_LIST: 'mediaforge:tasks:list',
   TASK_CANCEL: 'mediaforge:task:cancel',

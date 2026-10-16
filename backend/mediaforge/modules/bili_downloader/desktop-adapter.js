@@ -1,10 +1,18 @@
 'use strict';
 
 const { EventEmitter } = require('node:events');
+const fs = require('node:fs');
 const path = require('node:path');
 const { pathToFileURL } = require('node:url');
 const { parseProtocolLine, redactSecrets, TERMINAL_STATES } = require('../../../../apps/desktop/shared/protocol');
 const DownloadState = require('../../../../Bili-Downloader/electron-app/download-state');
+
+const DEFAULT_SETTINGS = Object.freeze({
+  video_quality: 'Maximum Accessible', audio_quality: 'Maximum Accessible',
+  codec: 'Auto / Maximum Quality', container: 'Auto', download_subtitle: true,
+  subtitle_format: 'srt', concurrent_fragments: 4, retry: 5,
+  delete_temp: true, ratelimit: 0
+});
 
 class BiliAdapter extends EventEmitter {
   constructor(context) {
@@ -12,6 +20,7 @@ class BiliAdapter extends EventEmitter {
     Object.assign(this, context);
     this.worker = null;
     this.activeTaskId = null;
+    this.auxiliaryBusy = false;
     this.cancelRequested = false;
     this.items = [];
     this.completedRows = new Set();
@@ -34,10 +43,11 @@ class BiliAdapter extends EventEmitter {
       }
     });
     this.worker.on('line', ({ line }) => this.handleLine(line));
-    this.worker.on('error', (error) => this.failActive('BACKEND_START_FAILED', error.message));
+    this.worker.on('error', (error) => { this.auxiliaryBusy = false; this.failActive('BACKEND_START_FAILED', error.message); });
     this.worker.on('exit', ({ code, signal, intentional }) => {
       if (!intentional) this.failActive('BACKEND_EXITED', `Bili backend stopped (${signal || `exit ${code}`}).`);
       this.worker = null;
+      this.auxiliaryBusy = false;
       this.emit('event', DownloadState.snapshotWithEvent(
         this.snapshot,
         { type: 'process_exit', code, signal },
@@ -55,7 +65,13 @@ class BiliAdapter extends EventEmitter {
     if (['pause', 'resume', 'cancel'].includes(action)) return this[action](this.activeTaskId);
     const worker = this.ensureWorker();
     if (['check_account', 'get_settings', 'set_settings'].includes(action)) {
-      worker.send({ command: commandMap[action], ...payload });
+      if (action === 'check_account') this.auxiliaryBusy = true;
+      try {
+        worker.send({ command: commandMap[action], ...payload });
+      } catch (error) {
+        if (action === 'check_account') this.auxiliaryBusy = false;
+        throw error;
+      }
       return { accepted: true };
     }
     if (this.activeTaskId) {
@@ -86,6 +102,7 @@ class BiliAdapter extends EventEmitter {
       : { type: 'log', level: 'INFO', message: parsed.message };
     if (raw.type === 'log') raw.message = redactSecrets(raw.message);
     const event = DownloadState.snapshotWithEvent(this.snapshot, raw);
+    if (raw.type === 'account') this.auxiliaryBusy = false;
     this.items = this.snapshot.items;
     this.emit('event', event);
     const taskId = this.activeTaskId;
@@ -174,8 +191,32 @@ class BiliAdapter extends EventEmitter {
     return { snapshot: DownloadState.clone(this.snapshot), task };
   }
 
+  isBusy() { return this.auxiliaryBusy; }
+
+  async resetToDefaults() {
+    const active = this.activeTaskId ? this.taskManager.get(this.activeTaskId) : null;
+    if (active && !TERMINAL_STATES.has(active.state)) throw new Error('Cannot reset Bili Downloader while a download is active.');
+    await this.worker?.terminate();
+    this.worker = null;
+    this.activeTaskId = null;
+    this.auxiliaryBusy = false;
+    this.cancelRequested = false;
+    this.items = [];
+    this.completedRows.clear();
+    this.snapshot = DownloadState.createSnapshot();
+    fs.rmSync(path.join(this.pathService.temp, 'bili-downloader'), { recursive: true, force: true });
+    const directory = path.join(this.pathService.config, 'bili-downloader');
+    const filePath = path.join(directory, 'settings.json');
+    fs.mkdirSync(directory, { recursive: true });
+    const partial = `${filePath}.part`;
+    fs.writeFileSync(partial, JSON.stringify(DEFAULT_SETTINGS, null, 2), 'utf8');
+    fs.renameSync(partial, filePath);
+    return { reset: true };
+  }
+
   shutdown() { return this.worker?.terminate(); }
 }
 
 function createAdapter(context) { return new BiliAdapter(context); }
-module.exports = { BiliAdapter, createAdapter };
+async function cleanupSession() {}
+module.exports = { BiliAdapter, cleanupSession, createAdapter, DEFAULT_SETTINGS };
