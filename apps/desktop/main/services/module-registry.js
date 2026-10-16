@@ -50,9 +50,9 @@ class ModuleRegistry {
       const moduleDirectory = path.dirname(manifestPath);
       const adapterPath = path.resolve(moduleDirectory, manifest.adapter);
       if (path.dirname(adapterPath) !== moduleDirectory) throw new Error(`${manifest.id}: adapter escapes its module directory.`);
-      const uiEntry = path.resolve(this.projectRoot, manifest.ui.entry);
-      const uiRelative = path.relative(this.projectRoot, uiEntry);
-      if (uiRelative.startsWith('..') || path.isAbsolute(uiRelative)) throw new Error(`${manifest.id}: UI entry escapes the project root.`);
+      const uiEntry = path.resolve(moduleDirectory, manifest.ui.entry);
+      const uiRelative = path.relative(moduleDirectory, uiEntry);
+      if (uiRelative.startsWith('..') || path.isAbsolute(uiRelative)) throw new Error(`${manifest.id}: UI entry escapes its module directory.`);
       if (!fs.statSync(adapterPath, { throwIfNoEntry: false })?.isFile()) throw new Error(`${manifest.id}: adapter does not exist.`);
       if (!fs.statSync(uiEntry, { throwIfNoEntry: false })?.isFile()) throw new Error(`${manifest.id}: UI entry does not exist.`);
       const resolved = Object.freeze({ ...manifest, manifestPath, moduleDirectory, adapterPath, uiEntry });

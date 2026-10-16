@@ -39,8 +39,8 @@ class SrtAdapter extends EventEmitter {
     this.allowedStateFiles = new Set();
   }
 
-  backendEntry() { return path.join(this.pathService.projectRoot, 'SRT-to-Speech-Studio', 'backend_entry.py'); }
-  projectRoot() { return path.join(this.pathService.projectRoot, 'SRT-to-Speech-Studio'); }
+  workerRoot() { return path.join(this.manifest.moduleDirectory, 'worker'); }
+  backendEntry() { return path.join(this.workerRoot(), 'backend_entry.py'); }
   runtimeId(ttsModel) { return ttsModel === MELOTTS_MODEL ? 'tts-melotts' : 'tts-vieneu'; }
 
   resourceClassFor(action) {
@@ -133,7 +133,7 @@ class SrtAdapter extends EventEmitter {
       ? 'tts-vieneu' : this.runtimeId(job.ttsModel);
     const process = this.processManager.runOneShot(`${this.manifest.id}:${task.id}`, {
       executable: this.runtimeResolver.resolve(runtime),
-      args: ['-u', this.backendEntry(), ...args], cwd: this.projectRoot(),
+      args: ['-u', this.backendEntry(), ...args], cwd: this.workerRoot(),
       env: {
         PYTHONUTF8: '1', PYTHONIOENCODING: 'utf-8',
         MEDIAFORGE_FFMPEG: this.ffmpegLocator.resolve(),

@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.2] - 2026-10-16
+
 ### Added
 
 - Added Hongguo Downloader with public series and episode discovery, quality-aware batch queues, concurrent HLS/HTTP/DASH processing, retry, pause, cancellation, and verified stream-copy outputs.
@@ -14,6 +16,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- Bumped all module manifests to 1.1.0 and the MediaForge application and core
+  package to 1.2.0.
+- Consolidated Bili Downloader, SFX Converter, and SRT-to-Speech source under
+  `backend/mediaforge/modules/<module_id>/`; manifests now resolve module-local
+  UI entries and adapters launch module-local workers without root-folder paths.
+- Standardized every module around a manifest, desktop adapter, `ui/`, and an
+  optional isolated `worker/`, while retaining the four separate Python
+  runtimes and all existing frontend/backend protocols.
+- Replaced the transitional architecture notes with a complete architecture
+  decision and mandatory module-development guide.
 - Added a shared, once-per-launch session cleanup lifecycle for every discovered module while preserving settings, credentials, models, sources, and completed output files.
 - Added a header Clear action that blocks active work, confirms the reset, and restores only the current module's UI and ordinary settings to defaults.
 - Separated Hongguo persistent settings from transient queue, discovery, progress, and Activity Log state.
@@ -25,6 +37,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Removed
 
+- Removed the three redundant standalone Electron shells and their per-module
+  Node package metadata after the unified shell and migrated module sources
+  passed syntax, registry, import, and contract tests.
 - Removed the redundant Hongguo input Clear button beside Add to Queue.
 
 ## [1.1] - 2026-10-13

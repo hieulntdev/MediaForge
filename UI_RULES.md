@@ -1,5 +1,9 @@
 # Electron Desktop UI Rules
 
+Backend boundaries, registration, runtime, and path rules are defined in
+[docs/MODULE_GUIDELINES.md](docs/MODULE_GUIDELINES.md). This document remains
+the normative visual and interaction standard.
+
 This document is a reusable UI standard for compact Electron workflow applications. MediaForge's SRT-to-Speech Studio is the measured reference implementation, while module names and workflow details below are implementation audit notes rather than dependencies of the standard.
 
 Normative language:

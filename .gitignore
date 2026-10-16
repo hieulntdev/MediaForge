@@ -4,10 +4,15 @@ Thumbs.db
 Desktop.ini
 
 # Editor and temporary files
+.idea/
+.vscode/
 *.swp
 *.swo
 *.orig
 *.bak
+*.backup
+*.old
+*.copy
 *.tmp
 *.temp
 *~
@@ -19,14 +24,16 @@ Desktop.ini
 .env.*
 !.env.example
 !.env.*.example
-/Bili-Downloader/config/settings.json
 
 # Node / Electron dependencies
 node_modules/
+.npm/
+.yarn/
+.pnpm-store/
 
 # Python environments, bytecode, and tool caches
 .venv/
-.venv-melotts/
+.venv-*/
 venv/
 env/
 /runtimes/envs/
@@ -37,6 +44,8 @@ __pycache__/
 .pytest_cache/
 .mypy_cache/
 .ruff_cache/
+.tox/
+.nox/
 .coverage
 .coverage.*
 htmlcov/
@@ -46,10 +55,18 @@ build/
 dist/
 out/
 release/
+releases/
+artifacts/
 coverage/
 *.app/
+*.asar
 *.dmg
 *.pkg
+*.exe
+*.msi
+*.deb
+*.rpm
+*.AppImage
 
 # Application runtime data and generated output
 downloads/
@@ -67,3 +84,6 @@ npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 *.part
+
+# Local tests
+/tests/

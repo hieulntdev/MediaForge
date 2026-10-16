@@ -1,0 +1,13 @@
+{
+  "repository_id": "kohei0209/spectral_feature_compression",
+  "revision": "0827e70a9e0c6f21b9b46cb9dfe4f7e4ebd307c5",
+  "dataset": "dnr",
+  "name": "locoformer-medium.enc-crossattn96dim.dec-crossattn96dim.musical64.learnable-query",
+  "checkpoint_sha256": "b878ea0ffe29c67401727d51cdaab8db0394178d8e0eafa9d2ca5e241fd472e2",
+  "config_sha256": "4d0d1ffc3ff80f162f288d31477d6a0699578bbf00f11b8fd091580668c12adb",
+  "sample_rate": 44100,
+  "channels": 1,
+  "segment_seconds": 12,
+  "shift_seconds": 6,
+  "sfx_index": 2
+}

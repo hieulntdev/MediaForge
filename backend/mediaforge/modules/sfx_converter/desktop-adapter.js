@@ -7,13 +7,7 @@ const path = require('node:path');
 const { pathToFileURL } = require('node:url');
 const { parseProtocolLine, TERMINAL_STATES } = require('../../../../apps/desktop/shared/protocol');
 
-const MODEL = Object.freeze({
-  dataset: 'dnr',
-  name: 'locoformer-medium.enc-crossattn96dim.dec-crossattn96dim.musical64.learnable-query',
-  revision: '0827e70a9e0c6f21b9b46cb9dfe4f7e4ebd307c5',
-  checkpointSha256: 'b878ea0ffe29c67401727d51cdaab8db0394178d8e0eafa9d2ca5e241fd472e2',
-  configSha256: '4d0d1ffc3ff80f162f288d31477d6a0699578bbf00f11b8fd091580668c12adb'
-});
+const MODEL = Object.freeze(require('./model.json'));
 
 function sha256(filePath) {
   return new Promise((resolve, reject) => {
@@ -49,7 +43,7 @@ class SfxAdapter extends EventEmitter {
   }
 
   launch() {
-    const project = path.join(this.pathService.projectRoot, 'SFX-Converter');
+    const project = path.join(this.manifest.moduleDirectory, 'worker');
     return {
       executable: this.runtimeResolver.resolve(this.manifest.runtime),
       args: ['-u', '-m', 'app.backend'], cwd: project,
@@ -139,12 +133,12 @@ class SfxAdapter extends EventEmitter {
     const config = path.join(root, 'merged_config.yaml');
     if (!fs.existsSync(checkpoint) || !fs.existsSync(config)) return { status: 'missing', installed: false, revision: MODEL.revision };
     const [checkpointHash, configHash] = await Promise.all([sha256(checkpoint), sha256(config)]);
-    const valid = checkpointHash === MODEL.checkpointSha256 && configHash === MODEL.configSha256;
+    const valid = checkpointHash === MODEL.checkpoint_sha256 && configHash === MODEL.config_sha256;
     return { status: valid ? 'ready' : 'corrupted', installed: true, valid, revision: MODEL.revision, directory: root };
   }
 
   async prefetchModel() {
-    const project = path.join(this.pathService.projectRoot, 'SFX-Converter');
+    const project = path.join(this.manifest.moduleDirectory, 'worker');
     const task = this.taskManager.create({ module: this.manifest.id, action: 'prefetch_model', input: {}, capabilities: { cancel: true, pause: false }, resourceClass: 'heavy' });
     this.activeTaskId = task.id;
     this.taskManager.transition(task.id, 'RUNNING', { stage: 'downloading_model' });

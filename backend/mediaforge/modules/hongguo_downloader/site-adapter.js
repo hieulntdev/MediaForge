@@ -2,7 +2,7 @@
 
 const { safeFetch, validateRemoteUrl } = require('./network');
 
-const USER_AGENT = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 MediaForge/1.1';
+const USER_AGENT = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 MediaForge/1.2';
 const PAGE_PATTERN = /^\/(?:voddetail\/(\d+)|vodplay\/(\d+)-(\d+)-(\d+))\.html$/;
 
 function decodeHtml(value = '') {

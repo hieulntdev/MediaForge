@@ -6,9 +6,7 @@ const { spawnSync } = require('node:child_process');
 
 const root = path.resolve(__dirname, '..');
 const roots = [
-  'apps', 'backend/mediaforge/modules', 'frontend', 'scripts',
-  'Bili-Downloader/electron-app', 'SRT-to-Speech-Studio/electron-app',
-  'SFX-Converter/electron'
+  'apps', 'backend/mediaforge/modules', 'frontend', 'scripts'
 ];
 const files = [];
 

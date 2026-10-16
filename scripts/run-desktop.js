@@ -4,11 +4,7 @@ const { spawn } = require('node:child_process');
 const path = require('node:path');
 
 function electronBinary() {
-  try {
-    return require('electron');
-  } catch {
-    return path.join(__dirname, '..', 'SFX-Converter', 'node_modules', '.bin', 'electron');
-  }
+  return require('electron');
 }
 
 const electronEnvironment = { ...process.env };

@@ -1,0 +1,12 @@
+{
+  "video_quality": "Maximum Accessible",
+  "audio_quality": "Maximum Accessible",
+  "codec": "Auto / Maximum Quality",
+  "container": "Auto",
+  "download_subtitle": true,
+  "subtitle_format": "srt",
+  "concurrent_fragments": 4,
+  "retry": 5,
+  "delete_temp": true,
+  "ratelimit": 0
+}

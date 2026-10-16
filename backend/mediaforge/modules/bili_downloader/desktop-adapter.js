@@ -5,14 +5,9 @@ const fs = require('node:fs');
 const path = require('node:path');
 const { pathToFileURL } = require('node:url');
 const { parseProtocolLine, redactSecrets, TERMINAL_STATES } = require('../../../../apps/desktop/shared/protocol');
-const DownloadState = require('../../../../Bili-Downloader/electron-app/download-state');
+const DownloadState = require('./ui/download-state');
 
-const DEFAULT_SETTINGS = Object.freeze({
-  video_quality: 'Maximum Accessible', audio_quality: 'Maximum Accessible',
-  codec: 'Auto / Maximum Quality', container: 'Auto', download_subtitle: true,
-  subtitle_format: 'srt', concurrent_fragments: 4, retry: 5,
-  delete_temp: true, ratelimit: 0
-});
+const DEFAULT_SETTINGS = Object.freeze(require('./defaults.json'));
 
 class BiliAdapter extends EventEmitter {
   constructor(context) {
@@ -29,7 +24,7 @@ class BiliAdapter extends EventEmitter {
 
   ensureWorker() {
     if (this.worker?.child) return this.worker;
-    const project = path.join(this.pathService.projectRoot, 'Bili-Downloader');
+    const project = path.join(this.manifest.moduleDirectory, 'worker');
     const executable = this.runtimeResolver.resolve(this.manifest.runtime);
     this.worker = this.processManager.persistentProcess(this.manifest.id, {
       executable,

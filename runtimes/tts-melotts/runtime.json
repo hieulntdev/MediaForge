@@ -1,7 +1,7 @@
 {
   "id": "tts-melotts",
   "environmentVariable": "MEDIAFORGE_MELOTTS_PYTHON",
-  "legacyInterpreter": "SRT-to-Speech-Studio/.venv-melotts/bin/python",
+  "legacyInterpreter": "backend/mediaforge/modules/srt_to_speech/worker/.venv-melotts/bin/python",
   "python": "3.12",
   "architecture": "arm64"
 }

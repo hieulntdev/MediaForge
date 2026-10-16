@@ -1,7 +1,7 @@
 {
   "id": "tts-vieneu",
   "environmentVariable": "MEDIAFORGE_VIENEU_PYTHON",
-  "legacyInterpreter": "SRT-to-Speech-Studio/.venv/bin/python",
+  "legacyInterpreter": "backend/mediaforge/modules/srt_to_speech/worker/.venv/bin/python",
   "python": "3.12",
   "architecture": "arm64"
 }
